@@ -169,7 +169,7 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
           fontFamily:"'JetBrains Mono',monospace", pointerEvents:"none"}}>
         X: 节点特征
       </text>
-      <text x={(X.graph+110+X.input)/2} y={Y.topo + 54 + 12} textAnchor="middle"
+      <text x={(X.graph+110+X.input)/2} y={Y.topo - 8} textAnchor="middle"
         style={{fontSize:10, fill:"#827d75", fontStyle:"italic",
           fontFamily:"'JetBrains Mono',monospace", pointerEvents:"none"}}>
         A_ij = 𝟙[(i,j) ∈ E]
