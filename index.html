@@ -1,0 +1,54 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>DGAC — 交互式可视化</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<style>
+  :root{
+    --bg:#f7f5f1;
+    --ink:#1b1a18;
+    --ink-2:#3d3a35;
+    --muted:#827d75;
+    --rule:#e3ddd2;
+    --paper:#fffdf7;
+    --accent-t:oklch(0.55 0.13 250); /* topology blue */
+    --accent-a:oklch(0.58 0.13 35);   /* attribute amber */
+    --accent-f:oklch(0.52 0.13 300);  /* fusion violet */
+    --accent-c:oklch(0.55 0.13 150);  /* cluster green */
+    --hl:oklch(0.92 0.08 85);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:'Inter','Noto Serif SC',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+  .serif{font-family:'Noto Serif SC',serif}
+  #root{min-height:100vh}
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="src/graph.jsx"></script>
+  <script type="text/babel" src="src/steps.jsx"></script>
+  <script src="src/dgac_math.js?v=6"></script>
+  <script type="text/babel" src="src/pipeline.jsx"></script>
+  <script type="text/babel" src="src/formulas.jsx"></script>
+  <script type="text/babel" src="src/tweaks.jsx"></script>
+  <script type="text/babel" src="src/extras.jsx"></script>
+  <script type="text/babel" src="src/app.jsx"></script>
+  <style>
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  </style>
+</body>
+</html>
