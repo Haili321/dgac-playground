@@ -347,7 +347,8 @@ function Block({ active, color, eyebrow, children, syms, onOpen, note }) {
 
 function Popover({ id, anchor, onClose, onOpen }){
   const [expandedIds, setExpandedIds] = useStateF([]);
-  useEffectF(() => { setExpandedIds([]); }, [id]);
+  const popRef = useRefF(null);
+  useEffectF(() => { setExpandedIds([]); if (popRef.current) popRef.current.scrollTop = 0; }, [id]);
   // Main chip: toggle membership.  Nested chip: push (add if absent).  X button: remove.
   const toggleExp = (k) => setExpandedIds(prev => {
     const i = prev.indexOf(k);
@@ -360,20 +361,31 @@ function Popover({ id, anchor, onClose, onOpen }){
   const e = GLOSSARY[id]; if (!e) return null;
   const r = anchor.getBoundingClientRect();
   const W = 380;
-  const H_est = 460;
-  const left = Math.min(window.innerWidth-W-12, Math.max(12, r.left-10));
-  // position BELOW if there's room, else ABOVE — use viewport coords (fixed)
-  const spaceBelow = window.innerHeight - r.bottom;
-  const top = spaceBelow > H_est + 20
-    ? r.bottom + 10
-    : Math.max(12, r.top - H_est - 10);
+  const MARGIN = 12;
+  const left = Math.min(window.innerWidth - W - MARGIN, Math.max(MARGIN, r.left - 10));
+  // Prefer below anchor; else above; else full-height. maxH = actual available space so
+  // the popover's bottom edge never exceeds viewport (internal scroll takes over).
+  const spaceBelow = window.innerHeight - r.bottom - MARGIN - 10;
+  const spaceAbove = r.top - MARGIN - 10;
+  let top, maxH;
+  if (spaceBelow >= 280) {
+    top = r.bottom + 10;
+    maxH = spaceBelow;
+  } else if (spaceAbove >= 280) {
+    maxH = spaceAbove;
+    top = r.top - maxH - 10;
+  } else {
+    top = MARGIN;
+    maxH = window.innerHeight - 2 * MARGIN;
+  }
   const parts = e.desc.split("\n");
   const [zh, en] = e.name.split(" · ");
   const content = (
-    <div onClick={ev=>ev.stopPropagation()}
+    <div ref={popRef} onClick={ev=>ev.stopPropagation()}
+      onWheel={ev => ev.stopPropagation()}
       style={{
         position:"fixed", left, top, width:W, zIndex:9999,
-        maxHeight: window.innerHeight - 24, overflowY:"auto",
+        maxHeight: maxH, overflowY:"auto", overscrollBehavior:"contain",
         background:"#1b1a18", color:"#fffdf7",
         borderRadius:12,
         boxShadow:"0 20px 48px -10px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.25)",
