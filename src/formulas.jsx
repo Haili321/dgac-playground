@@ -174,27 +174,30 @@ const GLOSSARY = {
 };
 
 // Chips shown at the bottom of each popover — click to drill into a related symbol.
+// Relations are kept tight: each listed key appears in the entry's formula, desc, or is
+// the closest upstream/downstream neighbour. Pure analogies (e.g. Ŝ is like Â) are excluded
+// to avoid misleading the reader.
 const RELATED = {
-  X:      ["Ahat","Xhat","N","F"],
-  A:      ["Ahat","D","I","N"],
+  X:      ["Xhat","Xprop","N","F"],          // Xhat = X/||X||, X enters Xprop; N,F are its dims
+  A:      ["Ahat","D","N"],                   // dropped I: A+I's "I" is N×N, Lort's I is d×d (naming clash)
   N:      ["X","A"],
-  F:      ["X"],
-  K:      ["C","C0","mu"],
+  F:      ["X","Xhat"],
+  K:      ["C","C0","mu","kmeans"],           // K is the k-means target count
   Ahat:   ["A","D","alpha","L"],
-  Xhat:   ["X","L2","Shat"],
-  Shat:   ["Xhat","cos","Ahat"],
+  Xhat:   ["X","L2","Shat","Xprop"],
+  Shat:   ["Xhat","cos","H0a","Ha"],          // dropped Ahat analogy; H0a=SVD(Ŝ), Ha iterates on Ŝ
   H0t:    ["Ahat","SVDd","MLP","Ht"],
   H0a:    ["Shat","SVDd","MLP","Ha"],
   Ht:     ["alpha","Ahat","H0t","L","SigmaK"],
   Ha:     ["alpha","Shat","H0a","L","SigmaK"],
-  H:      ["beta","Ht","Ha"],
+  H:      ["beta","Ht","Ha","mu"],            // +mu since μ = Cᵀ H
   alpha:  ["Ahat","L","SigmaK"],
   beta:   ["Ht","Ha","H"],
   L:      ["alpha","SigmaK","Ht","Ha"],
   Lc:     ["alpha","Ahat","C","C0"],
-  C0:     ["kmeans","onehot","H","K"],
-  C:      ["C0","alpha","Ahat","Lc"],
-  Xprop:  ["alpha","Ahat","Xhat","SVDd","SigmaK"],
+  C0:     ["kmeans","onehot","H","K","C"],    // +C since C0 is C's init
+  C:      ["C0","alpha","Ahat","Lc","argmax"],// +argmax since ŷ = argmax C
+  Xprop:  ["alpha","Ahat","Xhat","SVDd","Lprop"], // replaced SigmaK with Lprop (downstream consumer)
   mu:     ["C","H","tau","Lkm"],
   tau:    ["mu","softmax","Lkm"],
   gamma:  ["Lprop","Xprop"],
@@ -205,7 +208,7 @@ const RELATED = {
   I:      ["Lort"],
   SVDd:   ["H0t","H0a","Xprop"],
   MLP:    ["H0t","H0a"],
-  kmeans: ["C0","H","cos"],
+  kmeans: ["C0","H","cos","K"],               // +K
   onehot: ["C0","kmeans"],
   cos:    ["Shat","kmeans","Lprop"],
   argmax: ["C","Lkm"],
