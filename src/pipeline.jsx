@@ -156,7 +156,7 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
 
       {/* loss bar */}
       <PipeBlock x={X.fusion} y={Y.loss} w={440} h={36}
-        label="L = λ₁·L_prop + λ₂·L_km + λ₃·L_SSG + λ₄·L_ort"
+        label="L = L_cont + L_cluster + L_recons"
         color={A_L} active={on("loss")} dim={!on("loss")}
         onClick={()=>go("loss")}/>
 

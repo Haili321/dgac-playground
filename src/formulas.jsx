@@ -99,22 +99,22 @@ const GLOSSARY = {
            desc:"$\\gamma>1$ 时，余弦距离小的 easy 样本损失趋近 $0$，难样本被放大。\n类似 focal loss 的思想。",
            role:"超参" },
 
-  "Lprop":{ tex:"\\mathcal L_{\\text{prop}}", name:"扩散对齐损失",
-           formula:"\\mathcal L_{\\text{prop}}=\\bigl(1-\\cos(H,\\,X_{\\text{prop}})\\bigr)^{\\gamma}",
-           desc:"让融合表示 $H$ 与图平滑特征 $X_{\\text{prop}}$ 在余弦上对齐。\n$\\gamma$ 控制难样本聚焦程度。\n这是最主要的无监督信号。",
-           role:"损失项" },
-  "Lkm":  { tex:"\\mathcal L_{\\text{km}}", name:"中心对比损失",
-           formula:"\\mathcal L_{\\text{km}}=\\mathrm{CE}\\!\\left(H\\mu^\\top/\\tau,\\;\\arg\\max_k C\\right)",
-           desc:"以当前 $C$ 的硬分配为伪标签，\n把 $H$ 对 $\\mu$ 做带温度的 softmax 分类。\n相当于可微的 k-means 更新。",
-           role:"损失项" },
-  "LSSG": { tex:"\\mathcal L_{\\text{SSG}}", name:"SSG 三粒度一致性",
-           formula:"\\mathcal L_{\\text{SSG}}=\\lambda_1\\,\\mathrm{MSE}(H^{\\,t},H^{\\,a})+\\lambda_2\\,\\mathcal L_{\\text{nbr}}+\\lambda_3\\,\\mathcal L_{\\text{clu}}",
-           desc:"Self（节点级）：两分支在节点上对齐 $H^t\\approx H^a$。\nSibling（邻居级）：两分支的邻居相似矩阵对齐。\nGroup（簇级）：两分支的簇中心对齐。\n这是 DGAC 从双视图取一致性的理论支撑。",
-           role:"损失项（复合）" },
-  "Lort": { tex:"\\mathcal L_{\\text{ort}}", name:"正交正则",
-           formula:"\\mathcal L_{\\text{ort}}=\\bigl\\|H^\\top H-I\\bigr\\|_F^{\\,2}",
-           desc:"迫使 $H$ 的列近似正交 $\\Rightarrow$ 避免表示坍缩到低秩子空间。\n在无监督聚类里尤其重要，否则 k-means 可能退化成单点。",
-           role:"正则项" },
+  "Lrecons":{ tex:"\\mathcal L_{\\text{recons}}", name:"重建损失 · Reconstruction",
+           formula:"\\mathcal L_{\\text{recons}}=\\tfrac{1}{n}\\sum_{v_i\\in V}\\bigl(1-\\cos(H_i,\\,\\hat X_i)\\bigr)^{\\epsilon}",
+           desc:"Scaled Cosine Error —— 让融合表示 $H$ 与 L2 归一化特征 $\\hat X$ 在余弦上对齐（论文 Eq.20）。\n$\\epsilon\\ge 1$ 是锐化参数，放大难样本。\n保障训练过程保留输入属性信息。",
+           role:"损失项（3 个顶层之一）" },
+  "Lcluster":{ tex:"\\mathcal L_{\\text{cluster}}", name:"聚类损失 · Clustering",
+           formula:"\\mathcal L_{\\text{cluster}}=-\\tfrac{1}{n}\\sum_k\\sum_{v_i\\in C_k}\\log\\frac{\\exp(\\cos(H_i,\\bar H_k)/\\tau)}{\\sum_{j\\ne k}\\exp(\\cos(H_i,\\bar H_j)/\\tau)}",
+           desc:"InfoNCE 式（论文 Eq.19）：把每个节点拉向自己的簇中心 $\\bar H_k$（正对），推开其他簇中心（负对）。\n$\\tau$ 是对比温度。\n增强簇内内聚性 + 簇间分离。",
+           role:"损失项（3 个顶层之一）" },
+  "Lcont": { tex:"\\mathcal L_{\\text{cont}}", name:"分层对比损失 · Hierarchical Contrastive",
+           formula:"\\mathcal L_{\\text{cont}}=w_{\\text{dec}}\\,\\mathcal L_{\\text{dec}}+w_{\\text{cont}}\\bigl(\\mathcal L_{\\text{nod}}+\\mathcal L_{\\text{nei}}+\\mathcal L_{\\text{clu}}\\bigr)",
+           desc:"论文 Eq.18 — 三粒度对比 + 去相关：\n· $\\mathcal L_{\\text{nod}}$（节点级）：两分支节点表示对齐 $\\|Z^t-Z^a\\|_F^2$\n· $\\mathcal L_{\\text{nei}}$（邻居级）：邻居聚合表示对齐\n· $\\mathcal L_{\\text{clu}}$（簇级）：簇中心对齐\n· $\\mathcal L_{\\text{dec}}$：去相关正则（见 $\\mathcal L_{\\text{dec}}$ 卡）",
+           role:"损失项（3 个顶层之一，复合）" },
+  "Ldec":  { tex:"\\mathcal L_{\\text{dec}}", name:"去相关正则 · Decorrelation",
+           formula:"\\mathcal L_{\\text{dec}}=\\bigl\\|H^\\top H-I\\bigr\\|_F^{\\,2}",
+           desc:"迫使 $H$ 的列近似正交 $\\Rightarrow$ 避免表示坍缩到低秩子空间。\n论文里 $\\mathcal L_{\\text{dec}}$ 作用在 $Z^{(t)},Z^{(a)}$ 上，playground 简化为对融合后的 $H$。\n在 $\\mathcal L_{\\text{cont}}$ 内以 $w_{\\text{dec}}$ 加权。",
+           role:"$\\mathcal L_{\\text{cont}}$ 的子项" },
   "I":    { tex:"I", name:"单位矩阵", formula:"I\\in\\mathbb R^{d\\times d}",
            desc:"$d\\times d$ 单位矩阵。仅在正交正则 $\\mathcal L_{\\text{ort}}$ 里出现。", role:"常量" },
 
@@ -218,11 +218,11 @@ const RELATED = {
   Xprop:  ["SVDd","alpha","Ahat","Xhat","SigmaK"], // X_prop = SVD_d(Σ α^ℓ Â^ℓ X̂)
   mu:     ["C","H","K"],                       // μ = Cᵀ H ∈ ℝ^{K×d}
   tau:    ["softmax","H","mu"],                // softmax(H μᵀ / τ)
-  gamma:  ["Lprop","cos","H","Xprop"],         // L_prop = (1 - cos(H, X_prop))^γ
-  Lprop:  ["cos","H","Xprop","gamma"],
-  Lkm:    ["CE","H","mu","tau","argmax","C"],  // CE(H μᵀ/τ, argmax_k C)
-  LSSG:   ["MSE","Ht","Ha"],                   // λ₁ MSE(Hᵗ,Hᵃ) + λ₂ L_nbr + λ₃ L_clu
-  Lort:   ["H","I","Frob"],                    // ||HᵀH - I||_F²
+  gamma:  ["Lrecons","cos","H","Xhat"],         // L_recons = (1-cos(H, X̂))^ε (paper uses ε; playground calls it γ)
+  Lrecons:["cos","H","Xhat","gamma"],
+  Lcluster:["cos","H","mu","tau","K"],         // -(1/n) Σ log[exp(cos(H_i,H̄_k)/τ) / Σ exp(...)]
+  Lcont:  ["Ldec","Ht","Ha","MSE"],            // w_dec L_dec + w_cont (L_nod + L_nei + L_clu)
+  Ldec:   ["H","I","Frob"],                    // ||HᵀH - I||_F²
   I:      [],                                   // I ∈ ℝ^{d×d}
   SVDd:   ["Msvd","Ud","Sigd","Vd"],           // M ≈ U_d Σ_d V_dᵀ; SVD_d(M) = U_d Σ_d^{1/2}
   Msvd:   ["N","F"],                           // M ∈ ℝ^{N×N} or ℝ^{N×F}
@@ -691,15 +691,15 @@ function FormulaPanel({ step, tweaks }) {
       </Block>
 
       <Block active={id==="loss"} color={A_L} eyebrow="自监督损失 · LOSS"
-        onOpen={open} syms={["Lprop","cos","H","Xprop","gamma","Lkm","CE","mu","tau","argmax","C","LSSG","MSE","Ht","Ha","Lort","I","Frob"]}>
+        onOpen={open} syms={["Lcont","Ldec","Ht","Ha","MSE","H","I","Frob","Lcluster","cos","mu","tau","K","Lrecons","Xhat","gamma"]}>
         <Eq hl={id==="loss"}
-          tex="\mathcal L_{\text{prop}}=\bigl(1-\cos(H,\,X_{\text{prop}})\bigr)^{\gamma}"/>
+          tex="\mathcal L=\mathcal L_{\text{cont}}+\mathcal L_{\text{cluster}}+\mathcal L_{\text{recons}}"/>
         <Eq hl={id==="loss"}
-          tex="\mathcal L_{\text{km}}=\mathrm{CE}\!\left(H\mu^\top/\tau,\;\arg\max_k C\right)"/>
+          tex="\mathcal L_{\text{cont}}=w_{\text{dec}}\,\mathcal L_{\text{dec}}+w_{\text{cont}}(\mathcal L_{\text{nod}}+\mathcal L_{\text{nei}}+\mathcal L_{\text{clu}})"/>
         <Eq hl={id==="loss"}
-          tex="\mathcal L_{\text{SSG}}=\lambda_1\,\mathrm{MSE}(H^{t},H^{a})+\lambda_2\,\mathcal L_{\text{nbr}}+\lambda_3\,\mathcal L_{\text{clu}}"/>
+          tex="\mathcal L_{\text{cluster}}=-\tfrac{1}{n}\sum_k\sum_{v_i\in C_k}\log\frac{\exp(\cos(H_i,\bar H_k)/\tau)}{\sum_{j\ne k}\exp(\cos(H_i,\bar H_j)/\tau)}"/>
         <Eq hl={id==="loss"}
-          tex="\mathcal L_{\text{ort}}=\bigl\|H^\top H-I\bigr\|_{F}^{2}"/>
+          tex="\mathcal L_{\text{recons}}=\tfrac{1}{n}\sum_{v_i\in V}(1-\cos(H_i,\hat X_i))^{\epsilon}"/>
       </Block>
 
       <Block active={id==="output"} color={A_C} eyebrow="输出 · OUTPUT"

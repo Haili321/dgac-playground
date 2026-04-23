@@ -39,10 +39,10 @@ function LossBreakdown({ active, tick }) {
   const decay = (lvl, base) => base * (0.4 + 0.6*Math.exp(-lvl*3*t)) * (0.9 + 0.1*Math.sin(tick*0.7+lvl));
   const C_L = "oklch(0.50 0.05 260)";
   const items = [
-    { k:"L_prop", f:"(1 − cos(H, X_prop))^γ",    v:decay(1.0, 0.72), color:"oklch(0.55 0.13 300)" },
-    { k:"L_km",   f:"CE(H·μᵀ/τ, argmax C)",     v:decay(0.8, 0.60), color:"oklch(0.55 0.13 150)" },
-    { k:"L_SSG",  f:"λ₁·MSE + λ₂·Lₙ + λ₃·L_c",  v:decay(1.2, 0.55), color:"oklch(0.58 0.13 35)"  },
-    { k:"L_ort",  f:"‖HᵀH − I‖²",                v:decay(0.6, 0.40), color:"oklch(0.55 0.13 250)" },
+    { k:"L_cont",    f:"w·L_dec + (L_nod+L_nei+L_clu)",  v:decay(1.2, 0.55), color:"oklch(0.58 0.13 35)"  },
+    { k:"L_cluster", f:"−(1/n) Σ log[exp(cos/τ)/Σ(…)]",  v:decay(0.8, 0.60), color:"oklch(0.55 0.13 150)" },
+    { k:"L_recons",  f:"(1 − cos(H, X̂))^ε",             v:decay(1.0, 0.72), color:"oklch(0.55 0.13 300)" },
+    { k:"L_dec",     f:"‖HᵀH − I‖_F²  (∈ L_cont)",       v:decay(0.6, 0.40), color:"oklch(0.55 0.13 250)" },
   ];
   return (
     <div style={{
@@ -63,7 +63,7 @@ function LossBreakdown({ active, tick }) {
       </div>
       <div style={{marginTop:12, fontSize:11.5, color:"#3d3a35", lineHeight:1.6}}>
         四项损失 <span className="mono">λ</span> 加权求和 — 全部自监督，<b>不需要任何节点标签</b>。
-        L_SSG 是双分支一致性（节点 / 邻居 / 簇三粒度），L_prop 让 H 对齐扩散后的特征 X_prop。
+        L_cont 是分层对比（节点 / 邻居 / 簇三粒度 + 去相关 L_dec），L_recons 让 H 对齐 L2 归一化特征 X̂（论文 Eq.17-20）。
       </div>
     </div>
   );

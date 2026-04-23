@@ -62,10 +62,10 @@ const STEPS = [
   {
     id: "loss",
     title: "自监督目标",
-    subtitle: "L = λ₁·L_prop + λ₂·L_km + λ₃·L_SSG + λ₄·L_ort",
+    subtitle: "L = L_cont + L_cluster + L_recons",
     active: ["fusion", "cprop", "loss"],
     formula: "loss",
-    desc: "训练信号来自四路：(1) H 与扩散后的 X_prop 余弦对齐；(2) 中心对比 k-means 损失；(3) Hᵗ 与 Hᵃ 在节点 / 邻居 / 簇三个粒度的不变性 (SSG)；(4) 正交正则。无需标签。",
+    desc: "论文 Section 5.3 的三项顶层损失：(1) L_cont — 分层对比，三粒度（节点/邻居/簇）一致性 + 去相关 L_dec；(2) L_cluster — InfoNCE 式簇心对比；(3) L_recons — Scaled Cosine Error，H 与 X̂ 对齐。无需标签。",
   },
   {
     id: "output",
