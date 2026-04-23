@@ -96,5 +96,5 @@ only the educational interactive visualisation.
 
 <p align="center">
   <sub>Built by <a href="https://github.com/Haili321">Haili Yuan</a> ·
-  PhD in Graph-Agnostic Clustering @ University of Warwick</sub>
+  PhD in Computer Science @ University of Warwick</sub>
 </p>
