@@ -120,7 +120,7 @@ const GLOSSARY = {
 
   // ---- Operators & functions ----
   "SVDd": { tex:"\\mathrm{SVD}_d", name:"截断奇异值分解 · Truncated SVD",
-           formula:"M\\approx U_d\\,\\Sigma_d\\,V_d^\\top,\\qquad \\mathrm{SVD}_d(M)=U_d\\Sigma_d^{1/2}",
+           formula:"H_0^{\\,t}=\\mathrm{SVD}_d(\\hat A),\\qquad H_0^{\\,a}=\\mathrm{SVD}_d(\\hat S)",
            desc:"取最大的 $d$ 个奇异值及其对应左右奇异向量，得到 $M$ 的最佳低秩近似（Eckart–Young）。\n在 DGAC 中用来把 $\\hat A\\in\\mathbb R^{N\\times N}$、$\\hat S\\in\\mathbb R^{N\\times N}$ 压到 $\\mathbb R^{N\\times d}$，得到两条分支的初值 $H_0^{\\,t}$、$H_0^{\\,a}$。\n相比随机初始化，SVD 能保留最多的全局结构信息。",
            role:"编码算子" },
   "MLP":  { tex:"\\mathrm{MLP}", name:"多层感知机",
