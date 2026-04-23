@@ -690,11 +690,11 @@ function FormulaPanel({ step, tweaks }) {
           tex="\mathcal G=(A,\,X),\quad A\in\mathbb R^{N\times N},\quad X\in\mathbb R^{N\times F}"/>
       </Block>
 
-      <Block active={id==="encode"} color={A_A} eyebrow="输入编码 · ENCODE"
-        onOpen={open} syms={["Xhat","X","L2","Shat","H0t","SVDd","Ahat","H0a"]}>
-        <Eq hl={id==="encode"} tex="\hat X=X\,/\,\|X\|_2,\qquad \hat S=\hat X\hat X^\top"/>
+      <Block active={id==="encode"} color={A_A} eyebrow="输入编码 · ENCODE（交叉模态）"
+        onOpen={open} syms={["Xhat","X","L2","Shat","Ahat","D","H0t","H0a","SVDd"]}>
+        <Eq hl={id==="encode"} tex="\hat X=X\,/\,\|X\|_2,\qquad \hat S=\hat X\hat X^\top,\qquad \bar X=\mathrm{diag}(d)^{-1/2}X"/>
         <Eq hl={id==="encode"}
-          tex="H_0^{\,t}=\mathrm{SVD}_d(\hat A),\qquad H_0^{\,a}=\mathrm{SVD}_d(\hat S)"/>
+          tex="H_0^{\,t}=U=\mathrm{SVD}_d(\bar X),\qquad H_0^{\,a}=B=\text{top-}d\,\text{eigvec}(\hat A)"/>
       </Block>
 
       <Block active={id==="topology"} color={A_T} eyebrow="拓扑分支 · TOP_AGG"
