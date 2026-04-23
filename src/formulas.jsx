@@ -504,6 +504,55 @@ function Popover({ id, anchor, onClose, onOpen }){
                     </div>
                   ))}
                 </div>
+
+                {/* nested related chips — drill further without leaving this card */}
+                {(() => {
+                  const subRels = (RELATED[expandedId] || []).filter(k => GLOSSARY[k]);
+                  if (!subRels.length) return null;
+                  return (
+                    <div style={{marginTop:12, paddingTop:10,
+                      borderTop:"1px dashed oklch(0.26 0.02 80)"}}>
+                      <div style={{fontSize:9.5, color:"#827d75", letterSpacing:"0.18em",
+                        marginBottom:8, fontFamily:"'JetBrains Mono',monospace",
+                        textTransform:"uppercase"}}>继续 →</div>
+                      <div style={{display:"flex", flexWrap:"wrap", gap:6}}>
+                        {subRels.map(k => {
+                          const r = GLOSSARY[k];
+                          const zhName = (r.name||"").split(" · ")[0];
+                          return (
+                            <button key={k}
+                              onClick={ev => { ev.stopPropagation(); setExpandedId(k); }}
+                              title={zhName}
+                              style={{
+                                cursor:"pointer",
+                                padding:"3px 9px",
+                                background:"oklch(0.18 0.008 80)",
+                                color:"#d4cbb8",
+                                border:"1px solid oklch(0.28 0.02 80)",
+                                borderRadius:999,
+                                fontSize:11.5,
+                                display:"inline-flex",
+                                alignItems:"center",
+                                gap:4,
+                                transition:"all 0.12s",
+                              }}
+                              onMouseEnter={ev => {
+                                ev.currentTarget.style.background = "oklch(0.24 0.02 80)";
+                                ev.currentTarget.style.borderColor = "oklch(0.38 0.05 85)";
+                              }}
+                              onMouseLeave={ev => {
+                                ev.currentTarget.style.background = "oklch(0.18 0.008 80)";
+                                ev.currentTarget.style.borderColor = "oklch(0.28 0.02 80)";
+                              }}>
+                              <Katex tex={r.tex} display={false}/>
+                              <span style={{fontSize:9.5, color:"#a8a194"}}>{zhName}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
