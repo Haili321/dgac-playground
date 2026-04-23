@@ -614,27 +614,27 @@ function FormulaPanel({ step, tweaks }) {
       </div>
 
       <Block active={id==="input"} color="#3d3a35" eyebrow="输入 · INPUT"
-        onOpen={open} syms={["A","X","N","F","K"]}>
+        onOpen={open} syms={["A","X","N","F"]}>
         <Eq hl={id==="input"}
           tex="\mathcal G=(A,\,X),\quad A\in\mathbb R^{N\times N},\quad X\in\mathbb R^{N\times F}"/>
       </Block>
 
       <Block active={id==="encode"} color={A_A} eyebrow="输入编码 · ENCODE"
-        onOpen={open} syms={["Xhat","Shat","H0t","H0a","Ahat","SVDd","MLP","L2","D","cos"]}>
+        onOpen={open} syms={["Xhat","X","L2","Shat","H0t","SVDd","Ahat","H0a"]}>
         <Eq hl={id==="encode"} tex="\hat X=X\,/\,\|X\|_2,\qquad \hat S=\hat X\hat X^\top"/>
         <Eq hl={id==="encode"}
           tex="H_0^{\,t}=\mathrm{SVD}_d(\hat A),\qquad H_0^{\,a}=\mathrm{SVD}_d(\hat S)"/>
       </Block>
 
       <Block active={id==="topology"} color={A_T} eyebrow="拓扑分支 · TOP_AGG"
-        onOpen={open} syms={["Ht","alpha","Ahat","H0t","L","SigmaK"]}
+        onOpen={open} syms={["Ht","alpha","Ahat","H0t","L"]}
         note={`当前参数：α = ${tweaks.alpha.toFixed(2)}，L = ${tweaks.topLayers}`}>
         <Eq hl={id==="topology"}
           tex="H^{t\,(\ell+1)}\;\leftarrow\;\alpha\,\hat A\,H^{t\,(\ell)}\;+\;H_0^{\,t},\qquad \ell=0,\dots,L-1"/>
       </Block>
 
       <Block active={id==="attribute"} color={A_A} eyebrow="属性分支 · ATTR_AGG"
-        onOpen={open} syms={["Ha","alpha","Shat","H0a","L","SigmaK"]}
+        onOpen={open} syms={["Ha","alpha","Shat","H0a"]}
         note="Ŝ 把属性相似的节点视作「虚拟邻居」，哪怕它们在 A 中无边 — 这是对异质图友好的关键。">
         <Eq hl={id==="attribute"}
           tex="H^{a\,(\ell+1)}\;\leftarrow\;\alpha\,\hat S\,H^{a\,(\ell)}\;+\;H_0^{\,a}"/>
@@ -647,20 +647,20 @@ function FormulaPanel({ step, tweaks }) {
       </Block>
 
       <Block active={id==="kmeans"} color={A_C} eyebrow="初始聚类 · K-MEANS"
-        onOpen={open} syms={["C0","H","K","kmeans","onehot","cos"]}>
+        onOpen={open} syms={["C0","onehot","kmeans","H","K","cos"]}>
         <Eq hl={id==="kmeans"}
           tex="C_0=\mathrm{one\_hot}\bigl(\,\mathrm{k\text{-}means}(H,\,K,\,\cos)\bigr)"/>
       </Block>
 
       <Block active={id==="cprop"} color={A_C} eyebrow="簇分配扩散 · C-PROP ★"
-        onOpen={open} syms={["C","alpha","Ahat","C0","Lc","onehot"]}
+        onOpen={open} syms={["C","alpha","Ahat","C0","Lc"]}
         note={`当前参数：L_c = ${tweaks.cpropLayers} · 扩散硬分配 C₀，被邻居纠正成软分配 C`}>
         <Eq hl={id==="cprop"}
           tex="C^{(\ell+1)}\;\leftarrow\;\alpha\,\hat A\,C^{(\ell)}\;+\;C_0,\qquad \ell=0,\dots,L_c-1"/>
       </Block>
 
       <Block active={id==="loss"} color={A_L} eyebrow="自监督损失 · LOSS"
-        onOpen={open} syms={["Lprop","Lkm","LSSG","Lort","H","Xprop","mu","tau","gamma","C","I","cos","CE","MSE","Frob","softmax","argmax"]}>
+        onOpen={open} syms={["Lprop","cos","H","Xprop","gamma","Lkm","CE","mu","tau","argmax","C","LSSG","MSE","Ht","Ha","Lort","I","Frob"]}>
         <Eq hl={id==="loss"}
           tex="\mathcal L_{\text{prop}}=\bigl(1-\cos(H,\,X_{\text{prop}})\bigr)^{\gamma}"/>
         <Eq hl={id==="loss"}
