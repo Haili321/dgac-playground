@@ -192,55 +192,55 @@ const GLOSSARY = {
 };
 
 // Chips shown at the bottom of each popover — click to drill into a related symbol.
-// Relations are kept tight: each listed key appears in the entry's formula, desc, or is
-// the closest upstream/downstream neighbour. Pure analogies (e.g. Ŝ is like Â) are excluded
-// to avoid misleading the reader.
+// Rule: RELATED[sym] contains ONLY the GLOSSARY keys that literally appear in sym's Definition
+// formula (so every chip explains a character the reader just saw). Generic math letters
+// (M, u, v, x, σ, W, b, etc.) that aren't modelled as their own entries are skipped.
 const RELATED = {
-  X:      ["Xhat","Xprop","N","F"],          // Xhat = X/||X||, X enters Xprop; N,F are its dims
-  A:      ["Ahat","D","N"],                   // dropped I: A+I's "I" is N×N, Lort's I is d×d (naming clash)
-  N:      ["X","A"],
-  F:      ["X","Xhat"],
-  K:      ["C","C0","mu","kmeans"],           // K is the k-means target count
-  Ahat:   ["A","D","alpha","L"],
-  Xhat:   ["X","L2","Shat","Xprop"],
-  Shat:   ["Xhat","cos","H0a","Ha"],          // dropped Ahat analogy; H0a=SVD(Ŝ), Ha iterates on Ŝ
-  H0t:    ["Ahat","SVDd","MLP","Ht"],
-  H0a:    ["Shat","SVDd","MLP","Ha"],
-  Ht:     ["alpha","Ahat","H0t","L","SigmaK"],
-  Ha:     ["alpha","Shat","H0a","L","SigmaK"],
-  H:      ["beta","Ht","Ha","mu"],            // +mu since μ = Cᵀ H
-  alpha:  ["Ahat","L","SigmaK"],
-  beta:   ["Ht","Ha","H"],
-  L:      ["alpha","SigmaK","Ht","Ha"],
-  Lc:     ["alpha","Ahat","C","C0"],
-  C0:     ["kmeans","onehot","H","K","C"],    // +C since C0 is C's init
-  C:      ["C0","alpha","Ahat","Lc","argmax"],// +argmax since ŷ = argmax C
-  Xprop:  ["alpha","Ahat","Xhat","SVDd","Lprop"], // replaced SigmaK with Lprop (downstream consumer)
-  mu:     ["C","H","tau","Lkm"],
-  tau:    ["mu","softmax","Lkm"],
-  gamma:  ["Lprop","Xprop"],
-  Lprop:  ["H","Xprop","gamma","cos"],
-  Lkm:    ["mu","C","H","tau","CE","softmax","argmax"],
-  LSSG:   ["Ht","Ha","MSE"],
-  Lort:   ["H","I","Frob"],
-  I:      ["Lort"],
-  SVDd:   ["Msvd","Ud","Sigd","Vd","Ahat","Shat","MLP","H0t","H0a","Xprop"], // def-side (M,U,Σ,V) + DGAC-side (inputs/outputs/alt)
-  Msvd:   ["Ud","Sigd","Vd","SVDd","Ahat","Shat"],
-  Ud:     ["Sigd","Vd","SVDd","Msvd"],
-  Sigd:   ["Ud","Vd","SVDd","Msvd"],
-  Vd:     ["Ud","Sigd","SVDd","Msvd"],
-  MLP:    ["H0t","H0a"],
-  kmeans: ["C0","H","cos","K"],               // +K
-  onehot: ["C0","kmeans"],
-  cos:    ["Shat","kmeans","Lprop"],
-  argmax: ["C","Lkm"],
-  CE:     ["Lkm","softmax"],
-  MSE:    ["LSSG","Ht","Ha"],
-  Frob:   ["Lort"],
-  L2:     ["Xhat"],
-  D:      ["Ahat","A"],
-  softmax:["Lkm","tau"],
-  SigmaK: ["Ht","Ha","Xprop","alpha"],
+  X:      ["N","F"],                           // X ∈ ℝ^{N×F}
+  A:      ["N"],                                // A ∈ {0,1}^{N×N}
+  N:      [],                                   // N = |V|
+  F:      ["X"],                                // F = dim(X_i)
+  K:      [],                                   // K = #clusters
+  Ahat:   ["A","D","I"],                       // Â = D^{-1/2}(A+I)D^{-1/2}
+  Xhat:   ["X","L2"],                          // X̂_i = X_i / ||X_i||_2
+  Shat:   ["Xhat","N"],                        // Ŝ = X̂X̂ᵀ ∈ ℝ^{N×N}
+  H0t:    ["SVDd","MLP","Ahat"],               // H₀ᵗ = SVD_d(Â) or MLP(Â)
+  H0a:    ["SVDd","MLP","Shat"],               // H₀ᵃ = SVD_d(Ŝ) or MLP(Ŝ)
+  Ht:     ["L","alpha","Ahat","H0t","SigmaK"], // Hᵗ = Σ α^ℓ Â^ℓ H₀ᵗ
+  Ha:     ["L","alpha","Shat","H0a","SigmaK"], // Hᵃ = Σ α^ℓ Ŝ^ℓ H₀ᵃ
+  H:      ["beta","Ht","Ha"],                  // H = β Hᵗ + (1-β) Hᵃ
+  alpha:  ["Ahat","H0t","H0a"],                // H^{ℓ+1} = α Â H^{ℓ} + H_0
+  beta:   ["H","Ht","Ha"],                     // H = β Hᵗ + (1-β) Hᵃ
+  L:      [],                                   // ℓ = 0,…,L-1
+  Lc:     ["C","alpha","Ahat","C0"],           // C^{ℓ+1} = α Â C^{ℓ} + C_0
+  C0:     ["onehot","kmeans","H","K","cos"],   // C_0 = onehot(k-means(H, K, cos))
+  C:      ["alpha","Ahat","C0"],               // C^{ℓ+1} = α Â C^{ℓ} + C_0
+  Xprop:  ["SVDd","alpha","Ahat","Xhat","SigmaK"], // X_prop = SVD_d(Σ α^ℓ Â^ℓ X̂)
+  mu:     ["C","H","K"],                       // μ = Cᵀ H ∈ ℝ^{K×d}
+  tau:    ["softmax","H","mu"],                // softmax(H μᵀ / τ)
+  gamma:  ["Lprop","cos","H","Xprop"],         // L_prop = (1 - cos(H, X_prop))^γ
+  Lprop:  ["cos","H","Xprop","gamma"],
+  Lkm:    ["CE","H","mu","tau","argmax","C"],  // CE(H μᵀ/τ, argmax_k C)
+  LSSG:   ["MSE","Ht","Ha"],                   // λ₁ MSE(Hᵗ,Hᵃ) + λ₂ L_nbr + λ₃ L_clu
+  Lort:   ["H","I","Frob"],                    // ||HᵀH - I||_F²
+  I:      [],                                   // I ∈ ℝ^{d×d}
+  SVDd:   ["Msvd","Ud","Sigd","Vd"],           // M ≈ U_d Σ_d V_dᵀ; SVD_d(M) = U_d Σ_d^{1/2}
+  Msvd:   ["N","F"],                           // M ∈ ℝ^{N×N} or ℝ^{N×F}
+  Ud:     ["N"],                               // U_d ∈ ℝ^{N×d}
+  Sigd:   [],                                  // Σ_d = diag(σ_1,…,σ_d)
+  Vd:     ["N"],                               // V_d ∈ ℝ^{N×d}
+  MLP:    [],                                  // MLP(x) = W_2 σ(W_1 x + b_1) + b_2  (generic W/b/σ)
+  kmeans: ["mu","cos","H"],                    // min_μ Σ (1 - cos(H_i, μ_{c(i)}))
+  onehot: [],                                  // piecewise (generic c)
+  cos:    ["L2"],                              // u^T v / (||u|| ||v||)  (u,v generic)
+  argmax: ["C","K"],                           // ŷ_i = argmax_k C_{ik}, k ∈ {1,…,K}
+  CE:     [],                                  // CE(z, y) (z,y generic)
+  MSE:    ["N","L2"],                          // (1/N) Σ ||X_i - Y_i||_2²  (X,Y generic)
+  Frob:   [],                                  // ||M||_F (M generic)
+  L2:     [],                                  // ||x||_2 (x generic)
+  D:      ["A","I"],                           // D_ii = Σ_j (A+I)_{ij}
+  softmax:[],                                  // softmax(z)_k (z generic)
+  SigmaK: ["L","alpha","Ahat"],                // H^{(L)} = Σ α^ℓ Â^ℓ H_0
 };
 
 // ---- KaTeX renderer ---------------------------------------------------
