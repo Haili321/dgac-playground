@@ -348,7 +348,25 @@ function Block({ active, color, eyebrow, children, syms, onOpen, note }) {
 function Popover({ id, anchor, onClose, onOpen }){
   const [expandedIds, setExpandedIds] = useStateF([]);
   const popRef = useRefF(null);
-  useEffectF(() => { setExpandedIds([]); if (popRef.current) popRef.current.scrollTop = 0; }, [id]);
+  const prevLenF = useRefF(0);
+  useEffectF(() => { setExpandedIds([]); if (popRef.current) popRef.current.scrollTop = 0; prevLenF.current = 0; }, [id]);
+  // Auto-scroll to newest expansion block when user pushes a new one.
+  useEffectF(() => {
+    if (expandedIds.length > prevLenF.current && popRef.current) {
+      requestAnimationFrame(() => {
+        if (!popRef.current) return;
+        const blocks = popRef.current.querySelectorAll('[data-exp-block]');
+        const newest = blocks[blocks.length - 1];
+        if (newest) {
+          popRef.current.scrollTo({
+            top: Math.max(0, newest.offsetTop - 60),
+            behavior: 'smooth'
+          });
+        }
+      });
+    }
+    prevLenF.current = expandedIds.length;
+  }, [expandedIds]);
   // Main chip: toggle membership.  Nested chip: push (add if absent).  X button: remove.
   const toggleExp = (k) => setExpandedIds(prev => {
     const i = prev.indexOf(k);
@@ -498,7 +516,8 @@ function Popover({ id, anchor, onClose, onOpen }){
               if (!exp) return null;
               const subRels = (RELATED[eid] || []).filter(k => GLOSSARY[k]);
               return (
-                <div key={eid+'-'+idx} style={{marginTop:idx===0?14:10, padding:"12px 14px 14px",
+                <div key={eid+'-'+idx} data-exp-block={eid}
+                  style={{marginTop:idx===0?14:10, padding:"12px 14px 14px",
                   background:"oklch(0.12 0.008 80)",
                   borderRadius:8,
                   border:"1px solid oklch(0.32 0.03 85)",
