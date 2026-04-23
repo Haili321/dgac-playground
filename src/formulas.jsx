@@ -321,6 +321,8 @@ function Block({ active, color, eyebrow, children, syms, onOpen, note }) {
 }
 
 function Popover({ id, anchor, onClose, onOpen }){
+  const [expandedId, setExpandedId] = useStateF(null);
+  useEffectF(() => { setExpandedId(null); }, [id]);
   if (!id || !anchor) return null;
   const e = GLOSSARY[id]; if (!e) return null;
   const r = anchor.getBoundingClientRect();
@@ -404,10 +406,11 @@ function Popover({ id, anchor, onClose, onOpen }){
         </div>
       </div>
 
-      {/* related symbols — click to drill further */}
+      {/* related symbols — click chip to expand inline; re-click to collapse */}
       {(() => {
         const rels = (RELATED[id] || []).filter(k => GLOSSARY[k]);
-        if (!rels.length || !onOpen) return null;
+        if (!rels.length) return null;
+        const exp = expandedId && GLOSSARY[expandedId] ? GLOSSARY[expandedId] : null;
         return (
           <div style={{padding:"14px 22px 18px",
             borderTop:"1px solid oklch(0.28 0.02 80)",
@@ -418,16 +421,17 @@ function Popover({ id, anchor, onClose, onOpen }){
               {rels.map(k => {
                 const r = GLOSSARY[k];
                 const zhName = (r.name||"").split(" · ")[0];
+                const isExp = expandedId === k;
                 return (
                   <button key={k}
-                    onClick={ev => { ev.stopPropagation(); onOpen(k, ev.currentTarget); }}
+                    onClick={ev => { ev.stopPropagation(); setExpandedId(isExp ? null : k); }}
                     title={zhName}
                     style={{
                       cursor:"pointer",
                       padding:"5px 12px",
-                      background:"oklch(0.24 0.02 80)",
+                      background: isExp ? "oklch(0.36 0.06 85)" : "oklch(0.24 0.02 80)",
                       color:"oklch(0.94 0.1 85)",
-                      border:"1px solid oklch(0.32 0.03 85)",
+                      border: isExp ? "1px solid oklch(0.58 0.1 85)" : "1px solid oklch(0.32 0.03 85)",
                       borderRadius:999,
                       fontSize:13,
                       lineHeight:1.2,
@@ -435,23 +439,73 @@ function Popover({ id, anchor, onClose, onOpen }){
                       alignItems:"center",
                       gap:6,
                       transition:"all 0.12s",
-                    }}
-                    onMouseEnter={ev => {
-                      ev.currentTarget.style.background = "oklch(0.30 0.04 85)";
-                      ev.currentTarget.style.borderColor = "oklch(0.48 0.08 85)";
-                    }}
-                    onMouseLeave={ev => {
-                      ev.currentTarget.style.background = "oklch(0.24 0.02 80)";
-                      ev.currentTarget.style.borderColor = "oklch(0.32 0.03 85)";
                     }}>
                     <Katex tex={r.tex} display={false}/>
-                    <span style={{fontSize:10.5, color:"#a8a194", fontFamily:"'Inter',sans-serif"}}>
-                      {zhName}
-                    </span>
+                    <span style={{fontSize:10.5, color: isExp ? "oklch(0.9 0.1 85)" : "#a8a194",
+                      fontFamily:"'Inter',sans-serif"}}>{zhName}</span>
                   </button>
                 );
               })}
             </div>
+
+            {/* inline expansion: formula + desc of the picked related symbol */}
+            {exp && (
+              <div style={{marginTop:14, padding:"12px 14px 14px",
+                background:"oklch(0.12 0.008 80)",
+                borderRadius:8,
+                border:"1px solid oklch(0.32 0.03 85)",
+                animation:"fmlFade 0.16s ease-out"}}>
+                <div style={{display:"flex", justifyContent:"space-between",
+                  alignItems:"center", marginBottom:10, paddingBottom:8,
+                  borderBottom:"1px dashed oklch(0.26 0.02 80)"}}>
+                  <div style={{display:"flex", alignItems:"baseline", gap:8}}>
+                    <span style={{fontSize:18, color:"oklch(0.94 0.1 85)"}}>
+                      <Katex tex={exp.tex} display={false}/>
+                    </span>
+                    <span style={{fontSize:12, color:"#e6dfce", fontWeight:600}}>
+                      {(exp.name||"").split(" · ")[0]}
+                    </span>
+                  </div>
+                  {onOpen && (
+                    <button
+                      onClick={ev => { ev.stopPropagation(); onOpen(expandedId, ev.currentTarget); }}
+                      style={{
+                        padding:"3px 10px",
+                        background:"transparent",
+                        color:"#a8a194",
+                        border:"1px solid oklch(0.34 0.03 85)",
+                        borderRadius:6,
+                        fontSize:10.5,
+                        cursor:"pointer",
+                        fontFamily:"'JetBrains Mono',monospace",
+                        letterSpacing:"0.04em",
+                      }}
+                      title="打开完整说明卡（含它的相关符号）">
+                      ↗ 完整
+                    </button>
+                  )}
+                </div>
+                {exp.formula && (
+                  <div style={{fontSize:14.5, color:"#f5f0e4",
+                    padding:"10px 12px",
+                    background:"oklch(0.09 0.008 80)",
+                    borderRadius:6,
+                    marginBottom:10,
+                    overflowX:"auto",
+                    display:"flex", justifyContent:"center", alignItems:"center",
+                    minHeight:40}}>
+                    <Katex tex={exp.formula} display/>
+                  </div>
+                )}
+                <div style={{fontSize:12, lineHeight:1.75, color:"#d4cbb8"}}>
+                  {exp.desc.split("\n").map((p,i)=>(
+                    <div key={i} style={{marginBottom:5}}>
+                      <InlineMath text={p}/>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         );
       })()}
