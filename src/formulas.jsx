@@ -9,8 +9,8 @@ const { useState: useStateF, useRef: useRefF, useEffect: useEffectF } = React;
 //              role — one-line "role in DGAC" pill
 const GLOSSARY = {
   "X":    { tex:"X", name:"节点特征矩阵 · Node features",
-           formula:"X\\in\\mathbb R^{N\\times F}",
-           desc:"每行 $X_i$ 是第 $i$ 个节点的 $F$ 维属性向量。\nCora 是 1433 维词袋，Texas 是 1703 维。\nDGAC 不假设属性是否与图同质。",
+           formula:"X\\in\\mathbb R^{N\\times F},\\quad X_i=\\mathrm{attr}(v_i)",
+           desc:"每行 $X_i$ 是节点 $v_i$ 的 $F$ 维属性向量。\nCora 是 1433 维词袋，Texas 是 1703 维。\n**论文 Section 3.1 约定** $\\|X_i\\|_2 = 1$（输入已 L2 归一化）；playground 为清晰起见单独列 $\\hat X$ 这一步。",
            role:"输入之一" },
   "A":    { tex:"A", name:"邻接矩阵 · Adjacency",
            formula:"A\\in\\{0,1\\}^{N\\times N},\\; A_{ij}=1 \\iff (i,j)\\in E",
@@ -25,25 +25,25 @@ const GLOSSARY = {
 
   "Ahat": { tex:"\\hat A", name:"对称归一化邻接 · Normalized adjacency",
            formula:"\\hat A=D^{-1/2}(A+I)\\,D^{-1/2}",
-           desc:"$D$ 是 $A+I$ 的度对角矩阵。\n$\\hat A$ 是对称半正定扩散算子，特征值 $\\in [0, 1]$，最大特征值 $=1$ 对应恒等向量，保证迭代稳定。\n这个算子与 APPNP / GCN / Personalized PageRank 一脉相承。",
+           desc:"$D$ 是 $A+I$ 的度对角矩阵。\n$\\hat A$ 是对称半正定扩散算子，特征值 $\\in [0, 1]$，最大特征值 $=1$ 对应恒等向量，保证迭代稳定。\n**符号差异**：论文 Sec. 3.1 用 $\\tilde A=D^{-1/2}AD^{-1/2}$（无自环），playground 用 GCN 约定的 $\\hat A$（加自环 $A+I$）；二者在本文都写作 $\\hat A$。",
            role:"扩散算子（拓扑）" },
   "Xhat": { tex:"\\hat X", name:"L2 归一化特征",
            formula:"\\hat X_i = X_i\\,/\\,\\|X_i\\|_2",
-           desc:"逐行除以 L2 范数，把每个特征向量放到单位球面。\n这一步让 $\\hat X\\hat X^\\top$ 直接等于余弦相似度，不必再写除法。",
+           desc:"逐行除以 L2 范数，把每个特征向量放到单位球面。\n这一步让 $\\hat X\\hat X^\\top$ 直接等于余弦相似度，不必再写除法。\n论文把 $\\hat X$ 当作 $X$ 直接给出（Sec. 3.1 约定 $\\|X_i\\|_2=1$），$\\mathcal L_{\\text{recons}}$ 里的 $\\hat X$ 实际是更严格的 $PQ$（$\\bar X=PQR^\\top$ 的 SVD 前两项）。",
            role:"预处理" },
   "Shat": { tex:"\\hat S", name:"属性相似矩阵 · Attribute graph",
            formula:"\\hat S=\\hat X\\hat X^\\top\\;\\in\\;\\mathbb R^{N\\times N}",
            desc:"$\\hat S_{ij}=\\cos(X_i, X_j)$。\n把「属性相似」也当作一种邻接，构成第二张图。\n代码里用低秩分解 $\\text{half\\_}S$ 规避 $O(N^2)$ 存储。\n这是 DGAC 在异质图上好用的根本原因：属性邻居可能比结构邻居更干净。",
            role:"扩散算子（属性）" },
 
-  "H0t":  { tex:"H_0^{\\,t}", name:"拓扑分支初值",
-           formula:"H_0^{\\,t}=\\mathrm{SVD}_d(\\hat A)\\;\\text{或}\\;\\mathrm{MLP}(\\hat A)",
-           desc:"$\\hat A$ 的 $d$ 维低秩编码，是拓扑扩散链的初始态，也会在每一步作为 residual 加回。\n初值反复加入 $\\Rightarrow$ 扩散不会退化成一团均匀向量（避免 over-smoothing）。",
-           role:"初值（拓扑）" },
-  "H0a":  { tex:"H_0^{\\,a}", name:"属性分支初值",
-           formula:"H_0^{\\,a}=\\mathrm{SVD}_d(\\hat S)\\;\\text{或}\\;\\mathrm{MLP}(\\hat S)",
-           desc:"$\\hat S$ 的 $d$ 维低秩编码，是属性扩散链的初始态。\n与 $H_0^{\\,t}$ 同一维度 $d$，方便后面融合。",
-           role:"初值（属性）" },
+  "H0t":  { tex:"H_0^{\\,t}\\equiv U", name:"拓扑分支初值 U · Topology init",
+           formula:"U=\\mathrm{SVD}_d(\\bar X),\\quad \\bar X=\\mathrm{diag}(d)^{-1/2}X",
+           desc:"**论文 Eq.12 / Lemma 3** — 拓扑分支的初值 $U$ 来自**属性侧** $\\bar X$ 的 SVD 前 $d$ 个左奇异向量，等价于 $\\tilde S=\\bar X\\bar X^\\top$ 的前 $d$ 个特征向量（SVD 版本避免 $O(n^2)$ 显式构造 $\\tilde S$）。\n这是 DGAC 的**交叉模态**设计之一：拓扑分支用属性侧的结构做初始化，再在 $\\hat A$ 上扩散，让两侧信息融合。\nplayground 的 toy 实现用类中心+噪声近似 $U$。",
+           role:"初值（拓扑，来自属性 $\\bar X$）" },
+  "H0a":  { tex:"H_0^{\\,a}\\equiv B", name:"属性分支初值 B · Attribute init",
+           formula:"B=\\text{top-}d\\text{ eigvec}(\\tilde A),\\quad \\tilde A=D^{-1/2}AD^{-1/2}",
+           desc:"**论文 Eq.13** — 属性分支的初值 $B$ 来自**拓扑侧** 归一化邻接 $\\tilde A$ 的前 $d$ 个特征向量。\n交叉模态的另一半：属性分支用拓扑侧的结构做初始化，再在 $\\tilde S$ 上扩散。\n与 $H_0^{\\,t}$ 同维度 $d$，方便后面融合。\nplayground 的 toy 实现用类中心+噪声近似 $B$。",
+           role:"初值（属性，来自拓扑 $\\tilde A$）" },
   "Ht":   { tex:"H^{\\,t}", name:"拓扑分支表示",
            formula:"H^{\\,t(L)}=\\sum_{\\ell=0}^{L-1}\\alpha^\\ell\\,\\hat A^{\\,\\ell}H_0^{\\,t}",
            desc:"经过 $L$ 步扩散后，每个节点的表示融合了最多 $L$ 跳的邻居信息。\n展开后就是 PageRank 式的加权求和 —— 越远的邻居权重越小（$\\alpha^\\ell$ 衰减）。",
@@ -54,13 +54,13 @@ const GLOSSARY = {
            role:"分支输出" },
   "H":    { tex:"H", name:"融合表示 · Fused embedding",
            formula:"H=\\beta\\,H^{\\,t}+(1-\\beta)\\,H^{\\,a}",
-           desc:"$\\beta$ 控制两条分支的混合比例。\n可换成 $\\text{concat}$、$\\max$、gated MLP —— 论文消融里 add 常常最优。\n最终 k-means 和所有损失都作用在 $H$ 上。",
+           desc:"$\\beta$ 控制两条分支的混合比例。\n**论文 Eq.14** 实际是 $Z^{(t)}=H^{(t)}W^{(t)}$、$Z^{(a)}=H^{(a)}W^{(a)}$（可学习线性变换），再 $H=\\beta Z^{(t)}+(1-\\beta)Z^{(a)}$；融合后会做 L2 归一化 $\\|H_i\\|_2=1$。\nplayground 简化：跳过 $W^{(t)}/W^{(a)}$，直接在 $H^{(t)}/H^{(a)}$ 上融合。\n最终 k-means 和所有损失都作用在 $H$ 上。",
            role:"最终嵌入" },
 
-  "alpha":{ tex:"\\alpha", name:"扩散步长 · Teleport",
+  "alpha":{ tex:"\\alpha", name:"扩散步长 · Teleport (branch)",
            formula:"H^{(\\ell+1)}=\\alpha\\,\\hat A\\,H^{(\\ell)}+H_0",
-           desc:"对应 APPNP 的 $(1-\\alpha_{\\text{teleport}})$ 系数。\n$\\alpha$ 大 $\\Rightarrow$ 更多邻居、更平滑；$\\alpha$ 小 $\\Rightarrow$ 更贴近初值、保结构。\nDGAC 默认 $\\alpha\\approx 0.5$。",
-           role:"超参 (0, 1)" },
+           desc:"对应 APPNP 的 $(1-\\alpha_{\\text{teleport}})$ 系数。\n$\\alpha$ 大 $\\Rightarrow$ 更多邻居、更平滑；$\\alpha$ 小 $\\Rightarrow$ 更贴近初值、保结构。\n**仅用于两条分支扩散 $H^{(t)}, H^{(a)}$**（论文 Eq.12, Eq.13）；C-prop 另有自己的系数 $\\gamma$（见 $\\gamma$ 卡）。\nDGAC 默认 $\\alpha\\approx 0.5$。",
+           role:"超参 (0, 1)，分支扩散专用" },
   "beta": { tex:"\\beta",  name:"融合系数",
            formula:"H=\\beta\\,H^{\\,t}+(1-\\beta)\\,H^{\\,a}",
            desc:"$\\beta\\in[0,1]$。\n同质图（Cora, Citeseer）最优 $\\beta$ 偏大 —— 拓扑更可信。\n异质图（Texas, Wisconsin）最优 $\\beta$ 偏小 —— 属性更可信。\n是 DGAC graph-agnostic 的旋钮。",
@@ -69,22 +69,22 @@ const GLOSSARY = {
            formula:"\\ell=0,1,\\dots,L-1",
            desc:"APPNP 风格迭代次数。\n感受野 $\\approx L$ 跳。\n太大会 over-smoothing，但 DGAC 靠 residual $H_0$ 相对耐折磨。",
            role:"超参" },
-  "Lc":   { tex:"L_c", name:"C-prop 层数",
-           formula:"C^{(\\ell+1)}=\\alpha\\,\\hat A\\,C^{(\\ell)}+C_0,\\quad \\ell<L_c",
-           desc:"簇分配扩散的迭代次数。\n小数据集 $L_c\\in\\{2,3\\}$ 足够。\n这是 DGAC 的标志性设计：让分配本身在图上扩散。",
+  "Lc":   { tex:"L_c", name:"C-prop 层数 · C-prop depth",
+           formula:"C^{(\\ell+1)}=\\gamma\\,\\hat A\\,C^{(\\ell)}+C_0,\\quad \\ell<L_c",
+           desc:"簇分配扩散的迭代次数。\n论文 Eq.16 的迭代形式（闭式是 $C=\\sum_{\\ell=0}^{L_c}\\gamma^\\ell\\hat A^\\ell C^{(0)}$）。\n小数据集 $L_c\\in\\{2,3\\}$ 足够。\n这是 DGAC 的标志性设计：让分配本身在图上扩散。",
            role:"超参" },
 
   "C0":   { tex:"C_0", name:"初始硬分配",
            formula:"C_0=\\mathrm{one\\_hot}\\bigl(\\mathrm{k\\text{-}means}(H,K,\\cos)\\bigr)",
            desc:"第一次 k-means 得到的 one-hot 矩阵 $\\in\\{0,1\\}^{N\\times K}$。\n可能含噪声（误分配节点），但随后的 C-prop 会用邻居投票「纠错」。",
            role:"中间量" },
-  "C":    { tex:"C", name:"软分配矩阵",
-           formula:"C^{(\\ell+1)}=\\alpha\\,\\hat A\\,C^{(\\ell)}+C_0",
-           desc:"C-prop 扩散后的软分配 $\\in[0,1]^{N\\times K}$，每行近似概率。\n被多数邻居属于某簇的节点会被自动「拉回」正确簇。\n这个过程不涉及梯度。",
+  "C":    { tex:"C", name:"软分配矩阵 · Soft assignment",
+           formula:"C=\\sum_{\\ell=0}^{L_c}\\gamma^\\ell\\,\\hat A^\\ell\\,C^{(0)}",
+           desc:"论文 Eq.16 —— C-prop 扩散后的软分配 $\\in[0,1]^{N\\times K}$，每行近似概率。\n被多数邻居属于某簇的节点会被自动「拉回」正确簇。\n这个过程不涉及梯度。\n**系数是 $\\gamma$ 不是分支扩散的 $\\alpha$**（见 $\\gamma$ 卡）。",
            role:"中间量" },
   "Xprop":{ tex:"X_{\\text{prop}}", name:"扩散后的特征",
            formula:"X_{\\text{prop}}=\\mathrm{SVD}_d\\!\\left(\\sum_\\ell \\alpha^\\ell\\,\\hat A^{\\,\\ell}\\hat X\\right)",
-           desc:"对 $\\hat X$ 做 $L$ 步扩散再做 SVD，作为 $H$ 的自监督对齐目标。\n相当于「用图平滑过的特征」当无标签的 teacher。",
+           desc:"对 $\\hat X$ 做 $L$ 步扩散再做 SVD，作为 $H$ 的自监督对齐目标。\n相当于「用图平滑过的特征」当无标签的 teacher。\n**论文 $\\mathcal L_{\\text{recons}}$ 里用的是 $\\hat X=PQ$（$\\bar X=PQR^\\top$ 的 SVD 两项）**，而不是 $X_{\\text{prop}}$；playground 两者都保留，$X_{\\text{prop}}$ 是更贴近扩散动力学的 teacher。",
            role:"自监督目标" },
   "mu":   { tex:"\\mu", name:"簇中心",
            formula:"\\mu = C^\\top H\\;\\in\\;\\mathbb R^{K\\times d}",
@@ -94,10 +94,14 @@ const GLOSSARY = {
            formula:"\\mathrm{softmax}(H\\mu^\\top/\\tau)",
            desc:"对比学习温度。\n$\\tau$ 小 $\\Rightarrow$ 分布尖，分类边界硬。\n$\\tau$ 大 $\\Rightarrow$ 分布平，鼓励多样性。",
            role:"超参" },
-  "gamma":{ tex:"\\gamma", name:"锐化指数",
-           formula:"\\mathcal L_{\\text{prop}}=(1-\\cos(H,X_{\\text{prop}}))^\\gamma",
-           desc:"$\\gamma>1$ 时，余弦距离小的 easy 样本损失趋近 $0$，难样本被放大。\n类似 focal loss 的思想。",
-           role:"超参" },
+  "epsilon":{ tex:"\\epsilon", name:"锐化指数 · Sharpening exponent",
+           formula:"\\mathcal L_{\\text{recons}}=\\tfrac{1}{n}\\sum_i(1-\\cos(H_i,\\hat X_i))^{\\epsilon}",
+           desc:"$\\epsilon\\ge 1$ 时，余弦距离小的 easy 样本损失趋近 $0$，难样本被放大。\n类似 focal loss 的思想。\n**论文 Eq.20 使用 $\\epsilon$** 作为 Scaled Cosine Error 的锐化指数（playground 早期版本误用 $\\gamma$，现已对齐论文）。",
+           role:"超参 ($\\mathcal L_{\\text{recons}}$)" },
+  "gamma":{ tex:"\\gamma", name:"C-prop 衰减系数 · C-prop teleport",
+           formula:"C=\\sum_{\\ell=0}^{L_c}\\gamma^\\ell\\,\\hat A^\\ell\\,C^{(0)}",
+           desc:"**论文 Eq.16 专用**，与分支扩散的 $\\alpha$ 区分开。\n$\\gamma\\in[0,1]$ 越大 $\\Rightarrow$ 更相信邻居投票；越小 $\\Rightarrow$ 更信任初始 k-means 分配。\nplayground 的 toy 实现里把它并入 $\\alpha$ 滑块（共享），但论文中是独立超参。",
+           role:"超参 (C-prop)" },
 
   "Lrecons":{ tex:"\\mathcal L_{\\text{recons}}", name:"重建损失 · Reconstruction",
            formula:"\\mathcal L_{\\text{recons}}=\\tfrac{1}{n}\\sum_{v_i\\in V}\\bigl(1-\\cos(H_i,\\,\\hat X_i)\\bigr)^{\\epsilon}",
@@ -112,9 +116,21 @@ const GLOSSARY = {
            desc:"论文 Eq.18 — 三粒度对比 + 去相关：\n· $\\mathcal L_{\\text{nod}}$（节点级）：两分支节点表示对齐 $\\|Z^t-Z^a\\|_F^2$\n· $\\mathcal L_{\\text{nei}}$（邻居级）：邻居聚合表示对齐\n· $\\mathcal L_{\\text{clu}}$（簇级）：簇中心对齐\n· $\\mathcal L_{\\text{dec}}$：去相关正则（见 $\\mathcal L_{\\text{dec}}$ 卡）",
            role:"损失项（3 个顶层之一，复合）" },
   "Ldec":  { tex:"\\mathcal L_{\\text{dec}}", name:"去相关正则 · Decorrelation",
-           formula:"\\mathcal L_{\\text{dec}}=\\bigl\\|H^\\top H-I\\bigr\\|_F^{\\,2}",
-           desc:"迫使 $H$ 的列近似正交 $\\Rightarrow$ 避免表示坍缩到低秩子空间。\n论文里 $\\mathcal L_{\\text{dec}}$ 作用在 $Z^{(t)},Z^{(a)}$ 上，playground 简化为对融合后的 $H$。\n在 $\\mathcal L_{\\text{cont}}$ 内以 $w_{\\text{dec}}$ 加权。",
+           formula:"\\mathcal L_{\\text{dec}}=\\bigl\\|Z^{(t)\\top} Z^{(t)}-I\\bigr\\|_F^{\\,2}+\\bigl\\|Z^{(a)\\top} Z^{(a)}-I\\bigr\\|_F^{\\,2}",
+           desc:"迫使两分支表示 $Z^{(t)}, Z^{(a)}$ 的列近似正交 $\\Rightarrow$ 避免坍缩到低秩子空间。\nplayground 简化版：只对融合后的 $H$ 做 $\\|H^\\top H-I\\|_F^2$。\n在 $\\mathcal L_{\\text{cont}}$ 内以 $w_{\\text{dec}}$ 加权。",
            role:"$\\mathcal L_{\\text{cont}}$ 的子项" },
+  "Lnod":  { tex:"\\mathcal L_{\\text{nod}}", name:"节点级一致性 · Node-level",
+           formula:"\\mathcal L_{\\text{nod}}=\\bigl\\|Z^{(t)}-Z^{(a)}\\bigr\\|_F^{\\,2}",
+           desc:"**论文 Eq.18 子项之一** —— 两分支在每个节点上直接对齐。\n最粗暴的一致性：要求同一个节点在两个视角下的表示相似。\nplayground 简化：对 $H^{(t)}, H^{(a)}$ 直接做 $\\mathrm{MSE}$（跳过 $W$ 变换）。",
+           role:"$\\mathcal L_{\\text{cont}}$ 的子项（节点级）" },
+  "Lnei":  { tex:"\\mathcal L_{\\text{nei}}", name:"邻居级一致性 · Neighbor-level",
+           formula:"\\mathcal L_{\\text{nei}}=\\sum_{v_i\\in V}\\Bigl\\|Z^{(t)}_i-\\tfrac{1}{d(v_i)}\\sum_{v_j\\in N(v_i)}Z^{(a)}_j\\Bigr\\|^2",
+           desc:"**论文 Eq.18 子项之一** —— 让拓扑分支的某节点表示对齐属性分支在其邻居上的平均。\n捕捉邻居级别的 semantic invariance。",
+           role:"$\\mathcal L_{\\text{cont}}$ 的子项（邻居级）" },
+  "Lclu":  { tex:"\\mathcal L_{\\text{clu}}", name:"簇级一致性 · Cluster-level",
+           formula:"\\mathcal L_{\\text{clu}}=\\sum_k\\sum_{v_i\\in C_k}\\bigl\\|Z^{(t)}_i-\\bar Z^{(a)}_k\\bigr\\|^2,\\quad \\bar Z^{(a)}_k=\\tfrac{1}{|C_k|}\\sum_{v_i\\in C_k}Z^{(a)}_i",
+           desc:"**论文 Eq.18 子项之一** —— 两分支在**簇中心**层面对齐。\n把每个节点的拓扑表示拉向它所在簇在属性分支下的中心。\n最粗粒度的一致性。",
+           role:"$\\mathcal L_{\\text{cont}}$ 的子项（簇级）" },
   "I":    { tex:"I", name:"单位矩阵", formula:"I\\in\\mathbb R^{d\\times d}",
            desc:"$d\\times d$ 单位矩阵。仅在正交正则 $\\mathcal L_{\\text{ort}}$ 里出现。", role:"常量" },
 
@@ -196,7 +212,7 @@ const GLOSSARY = {
 // formula (so every chip explains a character the reader just saw). Generic math letters
 // (M, u, v, x, σ, W, b, etc.) that aren't modelled as their own entries are skipped.
 const RELATED = {
-  X:      ["N","F"],                           // X ∈ ℝ^{N×F}
+  X:      ["N","F"],                           // X ∈ ℝ^{N×F}, X_i = attr(v_i)
   A:      ["N"],                                // A ∈ {0,1}^{N×N}
   N:      [],                                   // N = |V|
   F:      ["X"],                                // F = dim(X_i)
@@ -204,25 +220,29 @@ const RELATED = {
   Ahat:   ["A","D","I"],                       // Â = D^{-1/2}(A+I)D^{-1/2}
   Xhat:   ["X","L2"],                          // X̂_i = X_i / ||X_i||_2
   Shat:   ["Xhat","N"],                        // Ŝ = X̂X̂ᵀ ∈ ℝ^{N×N}
-  H0t:    ["SVDd","MLP","Ahat"],               // H₀ᵗ = SVD_d(Â) or MLP(Â)
-  H0a:    ["SVDd","MLP","Shat"],               // H₀ᵃ = SVD_d(Ŝ) or MLP(Ŝ)
+  H0t:    ["SVDd","Xhat"],                     // paper: U = SVD_d(X̄), from attribute side
+  H0a:    ["Ahat"],                            // paper: B = top-d eigvec(Ã), from topology side
   Ht:     ["L","alpha","Ahat","H0t","SigmaK"], // Hᵗ = Σ α^ℓ Â^ℓ H₀ᵗ
   Ha:     ["L","alpha","Shat","H0a","SigmaK"], // Hᵃ = Σ α^ℓ Ŝ^ℓ H₀ᵃ
   H:      ["beta","Ht","Ha"],                  // H = β Hᵗ + (1-β) Hᵃ
   alpha:  ["Ahat","H0t","H0a"],                // H^{ℓ+1} = α Â H^{ℓ} + H_0
   beta:   ["H","Ht","Ha"],                     // H = β Hᵗ + (1-β) Hᵃ
   L:      [],                                   // ℓ = 0,…,L-1
-  Lc:     ["C","alpha","Ahat","C0"],           // C^{ℓ+1} = α Â C^{ℓ} + C_0
+  Lc:     ["C","gamma","Ahat","C0"],           // C^{ℓ+1} = γ Â C^{ℓ} + C_0  (paper uses γ, not α)
   C0:     ["onehot","kmeans","H","K","cos"],   // C_0 = onehot(k-means(H, K, cos))
-  C:      ["alpha","Ahat","C0"],               // C^{ℓ+1} = α Â C^{ℓ} + C_0
+  C:      ["gamma","Ahat","C0","Lc"],          // C = Σ γ^ℓ Â^ℓ C^{(0)}
   Xprop:  ["SVDd","alpha","Ahat","Xhat","SigmaK"], // X_prop = SVD_d(Σ α^ℓ Â^ℓ X̂)
   mu:     ["C","H","K"],                       // μ = Cᵀ H ∈ ℝ^{K×d}
   tau:    ["softmax","H","mu"],                // softmax(H μᵀ / τ)
-  gamma:  ["Lrecons","cos","H","Xhat"],         // L_recons = (1-cos(H, X̂))^ε (paper uses ε; playground calls it γ)
-  Lrecons:["cos","H","Xhat","gamma"],
+  epsilon:["Lrecons","cos","H","Xhat"],        // L_recons = (1-cos(H, X̂))^ε (paper Eq.20 uses ε)
+  gamma:  ["Lc","C","Ahat","C0"],              // C = Σ γ^ℓ Â^ℓ C^{(0)} — C-prop coef (paper Eq.16)
+  Lrecons:["cos","H","Xhat","epsilon"],
   Lcluster:["cos","H","mu","tau","K"],         // -(1/n) Σ log[exp(cos(H_i,H̄_k)/τ) / Σ exp(...)]
-  Lcont:  ["Ldec","Ht","Ha","MSE"],            // w_dec L_dec + w_cont (L_nod + L_nei + L_clu)
-  Ldec:   ["H","I","Frob"],                    // ||HᵀH - I||_F²
+  Lcont:  ["Lnod","Lnei","Lclu","Ldec"],       // w_dec L_dec + w_cont (L_nod + L_nei + L_clu)
+  Ldec:   ["H","I","Frob"],                    // ||HᵀH - I||_F²  (playground simplification)
+  Lnod:   ["Ht","Ha","Frob"],                  // ||Z^t - Z^a||_F²
+  Lnei:   ["Ht","Ha","N","L2"],                // neighbor-level invariance
+  Lclu:   ["Ht","Ha","C","K","L2"],            // cluster-level invariance
   I:      [],                                   // I ∈ ℝ^{d×d}
   SVDd:   ["Msvd","Ud","Sigd","Vd"],           // M ≈ U_d Σ_d V_dᵀ; SVD_d(M) = U_d Σ_d^{1/2}
   Msvd:   ["N","F"],                           // M ∈ ℝ^{N×N} or ℝ^{N×F}
@@ -684,14 +704,14 @@ function FormulaPanel({ step, tweaks }) {
       </Block>
 
       <Block active={id==="cprop"} color={A_C} eyebrow="簇分配扩散 · C-PROP ★"
-        onOpen={open} syms={["C","alpha","Ahat","C0","Lc"]}
-        note={`当前参数：L_c = ${tweaks.cpropLayers} · 扩散硬分配 C₀，被邻居纠正成软分配 C`}>
+        onOpen={open} syms={["C","gamma","Ahat","C0","Lc"]}
+        note={`当前参数：L_c = ${tweaks.cpropLayers} · 扩散硬分配 C₀，被邻居纠正成软分配 C · 论文 Eq.16 系数是 γ（不是 α）`}>
         <Eq hl={id==="cprop"}
-          tex="C^{(\ell+1)}\;\leftarrow\;\alpha\,\hat A\,C^{(\ell)}\;+\;C_0,\qquad \ell=0,\dots,L_c-1"/>
+          tex="C^{(\ell+1)}\;\leftarrow\;\gamma\,\hat A\,C^{(\ell)}\;+\;C_0,\qquad \ell=0,\dots,L_c-1"/>
       </Block>
 
       <Block active={id==="loss"} color={A_L} eyebrow="自监督损失 · LOSS"
-        onOpen={open} syms={["Lcont","Ldec","Ht","Ha","MSE","H","I","Frob","Lcluster","cos","mu","tau","K","Lrecons","Xhat","gamma"]}>
+        onOpen={open} syms={["Lcont","Lnod","Lnei","Lclu","Ldec","Ht","Ha","H","I","Frob","Lcluster","cos","mu","tau","K","Lrecons","Xhat","epsilon"]}>
         <Eq hl={id==="loss"}
           tex="\mathcal L=\mathcal L_{\text{cont}}+\mathcal L_{\text{cluster}}+\mathcal L_{\text{recons}}"/>
         <Eq hl={id==="loss"}

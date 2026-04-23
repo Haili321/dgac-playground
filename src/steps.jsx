@@ -14,10 +14,10 @@ const STEPS = [
   {
     id: "encode",
     title: "输入编码",
-    subtitle: "SVD / MLP 低秩编码",
+    subtitle: "交叉模态初值：U = SVD_d(X̄)，B = eig_d(Ã)",
     active: ["input-x", "input-a", "s-enc", "a-enc"],
     formula: "encode",
-    desc: "两条分支分别用 SVD 或 MLP 把邻接相关矩阵 (A_norm) 和属性相似矩阵 (S_norm = X̂ X̂ᵀ) 压到低维，得到 H₀ᵗ 和 H₀ᵃ，作为两条扩散链的初值。",
+    desc: "DGAC 的交叉模态设计（论文 Eq.12-13 / Lemma 3）：拓扑分支的初值 H₀ᵗ = U 来自**属性侧**（X̄ 的 SVD），属性分支的初值 H₀ᵃ = B 来自**拓扑侧**（Ã 的前 d 个特征向量）。两个初值把对侧的结构信息注入本分支。",
   },
   {
     id: "topology",
@@ -54,10 +54,10 @@ const STEPS = [
   {
     id: "cprop",
     title: "簇分配扩散 (C-prop)",
-    subtitle: "C ← α · Â · C + C₀  (迭代 Lc 次)",
+    subtitle: "C ← γ · Â · C + C₀  (迭代 Lc 次，论文 Eq.16)",
     active: ["kmeans", "cprop"],
     formula: "cprop",
-    desc: "DGAC 的点睛之笔：把硬分配 C₀ 也放回图上扩散 —— 错误分配的节点被邻居“纠正”，形成软分配 C。这一步不需要任何梯度，靠扩散本身平滑。",
+    desc: "DGAC 的点睛之笔：把硬分配 C₀ 也放回图上扩散 —— 错误分配的节点被邻居「纠正」，形成软分配 C。不需要梯度，靠扩散本身平滑。系数是 γ，与分支扩散的 α 区分开（playground toy 实现共用一个滑块）。",
   },
   {
     id: "loss",

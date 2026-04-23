@@ -114,12 +114,12 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
       <PipeBlock x={X.input} y={Y.topo} w={100} h={54} label="A" sub="N×N" color={A_T}
         active={on("input-a")} onClick={()=>go("input")}/>
 
-      {/* encoders */}
+      {/* encoders — cross-modality: attr branch init B from Ã; topo branch init U from X̄ */}
       <PipeBlock x={X.encode} y={Y.attr} w={150} h={54}
-        label="属性编码 A_enc" sub="S_norm → H₀ᵃ" color={A_A}
+        label="属性侧初值 B" sub="eig_d(Ã) → H₀ᵃ" color={A_A}
         active={on("a-enc")} onClick={()=>go("encode")}/>
       <PipeBlock x={X.encode} y={Y.topo} w={150} h={54}
-        label="拓扑编码 S_enc" sub="A_norm → H₀ᵗ" color={A_T}
+        label="拓扑侧初值 U" sub="SVD_d(X̄) → H₀ᵗ" color={A_T}
         active={on("s-enc")} onClick={()=>go("encode")}/>
 
       {/* diffusion blocks */}
@@ -143,10 +143,10 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
         label="k-means → C₀" color={A_C} active={on("kmeans")}
         onClick={()=>go("kmeans")}/>
 
-      {/* c-prop */}
+      {/* c-prop — paper Eq.16 uses γ (not the branch α) */}
       <PipeBlock x={X.cprop} y={Y.mid} w={200} h={54}
         label="C-prop 簇分配扩散"
-        sub={`α·Â·C + C₀  ×${tweaks.cpropLayers}`}
+        sub={`γ·Â·C + C₀  ×${tweaks.cpropLayers}`}
         color={A_C} active={on("cprop")} onClick={()=>go("cprop")}/>
 
       {/* output */}
@@ -175,9 +175,12 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
         A_ij = 𝟙[(i,j) ∈ E]
       </text>
 
-      {/* arrows — input → encode */}
-      <Arrow from={[X.input+100, Y.attr+27]} to={[X.encode, Y.attr+27]}  active={on("a-enc")||on("input-x")} color={A_A}/>
-      <Arrow from={[X.input+100, Y.topo+27]} to={[X.encode, Y.topo+27]} active={on("s-enc")||on("input-a")} color={A_T}/>
+      {/* arrows — input → encode — crossed to reflect cross-modality init:
+            X (attr input) → topology-branch init (bottom row, via SVD_d(X̄))
+            A (topo input) → attribute-branch init (top row, via eig_d(Ã))
+         */}
+      <Arrow from={[X.input+100, Y.attr+27]} to={[X.encode, Y.topo+27]}  active={on("s-enc")||on("input-x")} color={A_A} curve={-30}/>
+      <Arrow from={[X.input+100, Y.topo+27]} to={[X.encode, Y.attr+27]} active={on("a-enc")||on("input-a")} color={A_T} curve={30}/>
       {/* encode → diffusion */}
       <Arrow from={[X.encode+150, Y.attr+27]} to={[X.diff, Y.attr+27]}  active={on("attr-diff")} color={A_A}/>
       <Arrow from={[X.encode+150, Y.topo+27]} to={[X.diff, Y.topo+27]} active={on("top-diff")} color={A_T}/>
