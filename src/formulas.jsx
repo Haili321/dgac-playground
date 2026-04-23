@@ -39,11 +39,11 @@ const GLOSSARY = {
   "H0t":  { tex:"H_0^{\\,t}\\equiv U", name:"拓扑分支初值 U · Topology init",
            formula:"U=\\mathrm{SVD}_d(\\bar X),\\quad \\bar X=\\mathrm{diag}(d)^{-1/2}X",
            desc:"**论文 Eq.12 / Lemma 3** — 拓扑分支的初值 $U$ 来自**属性侧** $\\bar X$ 的 SVD 前 $d$ 个左奇异向量，等价于 $\\tilde S=\\bar X\\bar X^\\top$ 的前 $d$ 个特征向量（SVD 版本避免 $O(n^2)$ 显式构造 $\\tilde S$）。\n这是 DGAC 的**交叉模态**设计之一：拓扑分支用属性侧的结构做初始化，再在 $\\hat A$ 上扩散，让两侧信息融合。\nplayground 的 toy 实现用类中心+噪声近似 $U$。",
-           role:"初值（拓扑，来自属性 $\\bar X$）" },
+           role:"初值（拓扑，来自属性 X̄）" },
   "H0a":  { tex:"H_0^{\\,a}\\equiv B", name:"属性分支初值 B · Attribute init",
            formula:"B=\\text{top-}d\\text{ eigvec}(\\tilde A),\\quad \\tilde A=D^{-1/2}AD^{-1/2}",
            desc:"**论文 Eq.13** — 属性分支的初值 $B$ 来自**拓扑侧** 归一化邻接 $\\tilde A$ 的前 $d$ 个特征向量。\n交叉模态的另一半：属性分支用拓扑侧的结构做初始化，再在 $\\tilde S$ 上扩散。\n与 $H_0^{\\,t}$ 同维度 $d$，方便后面融合。\nplayground 的 toy 实现用类中心+噪声近似 $B$。",
-           role:"初值（属性，来自拓扑 $\\tilde A$）" },
+           role:"初值（属性，来自拓扑 Ã）" },
   "Ht":   { tex:"H^{\\,t}", name:"拓扑分支表示",
            formula:"H^{\\,t(L)}=\\sum_{\\ell=0}^{L-1}\\alpha^\\ell\\,\\hat A^{\\,\\ell}H_0^{\\,t}",
            desc:"经过 $L$ 步扩散后，每个节点的表示融合了最多 $L$ 跳的邻居信息。\n展开后就是 PageRank 式的加权求和 —— 越远的邻居权重越小（$\\alpha^\\ell$ 衰减）。",
@@ -97,7 +97,7 @@ const GLOSSARY = {
   "epsilon":{ tex:"\\epsilon", name:"锐化指数 · Sharpening exponent",
            formula:"\\mathcal L_{\\text{recons}}=\\tfrac{1}{n}\\sum_i(1-\\cos(H_i,\\hat X_i))^{\\epsilon}",
            desc:"$\\epsilon\\ge 1$ 时，余弦距离小的 easy 样本损失趋近 $0$，难样本被放大。\n类似 focal loss 的思想。\n**论文 Eq.20 使用 $\\epsilon$** 作为 Scaled Cosine Error 的锐化指数（playground 早期版本误用 $\\gamma$，现已对齐论文）。",
-           role:"超参 ($\\mathcal L_{\\text{recons}}$)" },
+           role:"超参 (L_recons)" },
   "gamma":{ tex:"\\gamma", name:"C-prop 衰减系数 · C-prop teleport",
            formula:"C=\\sum_{\\ell=0}^{L_c}\\gamma^\\ell\\,\\hat A^\\ell\\,C^{(0)}",
            desc:"**论文 Eq.16 专用**，与分支扩散的 $\\alpha$ 区分开。\n$\\gamma\\in[0,1]$ 越大 $\\Rightarrow$ 更相信邻居投票；越小 $\\Rightarrow$ 更信任初始 k-means 分配。\nplayground 的 toy 实现里把它并入 $\\alpha$ 滑块（共享），但论文中是独立超参。",
@@ -118,19 +118,19 @@ const GLOSSARY = {
   "Ldec":  { tex:"\\mathcal L_{\\text{dec}}", name:"去相关正则 · Decorrelation",
            formula:"\\mathcal L_{\\text{dec}}=\\bigl\\|Z^{(t)\\top} Z^{(t)}-I\\bigr\\|_F^{\\,2}+\\bigl\\|Z^{(a)\\top} Z^{(a)}-I\\bigr\\|_F^{\\,2}",
            desc:"迫使两分支表示 $Z^{(t)}, Z^{(a)}$ 的列近似正交 $\\Rightarrow$ 避免坍缩到低秩子空间。\nplayground 简化版：只对融合后的 $H$ 做 $\\|H^\\top H-I\\|_F^2$。\n在 $\\mathcal L_{\\text{cont}}$ 内以 $w_{\\text{dec}}$ 加权。",
-           role:"$\\mathcal L_{\\text{cont}}$ 的子项" },
+           role:"L_cont 的子项" },
   "Lnod":  { tex:"\\mathcal L_{\\text{nod}}", name:"节点级一致性 · Node-level",
            formula:"\\mathcal L_{\\text{nod}}=\\bigl\\|Z^{(t)}-Z^{(a)}\\bigr\\|_F^{\\,2}",
            desc:"**论文 Eq.18 子项之一** —— 两分支在每个节点上直接对齐。\n最粗暴的一致性：要求同一个节点在两个视角下的表示相似。\nplayground 简化：对 $H^{(t)}, H^{(a)}$ 直接做 $\\mathrm{MSE}$（跳过 $W$ 变换）。",
-           role:"$\\mathcal L_{\\text{cont}}$ 的子项（节点级）" },
+           role:"L_cont 的子项（节点级）" },
   "Lnei":  { tex:"\\mathcal L_{\\text{nei}}", name:"邻居级一致性 · Neighbor-level",
            formula:"\\mathcal L_{\\text{nei}}=\\sum_{v_i\\in V}\\Bigl\\|Z^{(t)}_i-\\tfrac{1}{d(v_i)}\\sum_{v_j\\in N(v_i)}Z^{(a)}_j\\Bigr\\|^2",
            desc:"**论文 Eq.18 子项之一** —— 让拓扑分支的某节点表示对齐属性分支在其邻居上的平均。\n捕捉邻居级别的 semantic invariance。",
-           role:"$\\mathcal L_{\\text{cont}}$ 的子项（邻居级）" },
+           role:"L_cont 的子项（邻居级）" },
   "Lclu":  { tex:"\\mathcal L_{\\text{clu}}", name:"簇级一致性 · Cluster-level",
            formula:"\\mathcal L_{\\text{clu}}=\\sum_k\\sum_{v_i\\in C_k}\\bigl\\|Z^{(t)}_i-\\bar Z^{(a)}_k\\bigr\\|^2,\\quad \\bar Z^{(a)}_k=\\tfrac{1}{|C_k|}\\sum_{v_i\\in C_k}Z^{(a)}_i",
            desc:"**论文 Eq.18 子项之一** —— 两分支在**簇中心**层面对齐。\n把每个节点的拓扑表示拉向它所在簇在属性分支下的中心。\n最粗粒度的一致性。",
-           role:"$\\mathcal L_{\\text{cont}}$ 的子项（簇级）" },
+           role:"L_cont 的子项（簇级）" },
   "I":    { tex:"I", name:"单位矩阵", formula:"I\\in\\mathbb R^{d\\times d}",
            desc:"$d\\times d$ 单位矩阵。仅在正交正则 $\\mathcal L_{\\text{ort}}$ 里出现。", role:"常量" },
 
@@ -220,8 +220,8 @@ const RELATED = {
   Ahat:   ["A","D","I"],                       // Â = D^{-1/2}(A+I)D^{-1/2}
   Xhat:   ["X","L2"],                          // X̂_i = X_i / ||X_i||_2
   Shat:   ["Xhat","N"],                        // Ŝ = X̂X̂ᵀ ∈ ℝ^{N×N}
-  H0t:    ["SVDd","Xhat"],                     // paper: U = SVD_d(X̄), from attribute side
-  H0a:    ["Ahat"],                            // paper: B = top-d eigvec(Ã), from topology side
+  H0t:    ["SVDd","X","D"],                    // paper: U = SVD_d(X̄), X̄ = diag(d)^{-1/2} X
+  H0a:    ["Ahat","A","D"],                    // paper: B = top-d eigvec(Ã), Ã = D^{-1/2} A D^{-1/2}
   Ht:     ["L","alpha","Ahat","H0t","SigmaK"], // Hᵗ = Σ α^ℓ Â^ℓ H₀ᵗ
   Ha:     ["L","alpha","Shat","H0a","SigmaK"], // Hᵃ = Σ α^ℓ Ŝ^ℓ H₀ᵃ
   H:      ["beta","Ht","Ha"],                  // H = β Hᵗ + (1-β) Hᵃ
