@@ -479,39 +479,19 @@ function Popover({ id, anchor, onClose, onOpen }){
                         {(exp.name||"").split(" · ")[0]}
                       </span>
                     </div>
-                    <div style={{display:"flex", gap:6}}>
-                      {onOpen && (
-                        <button
-                          onClick={ev => { ev.stopPropagation(); onOpen(eid, ev.currentTarget); }}
-                          style={{
-                            padding:"3px 10px",
-                            background:"transparent",
-                            color:"#a8a194",
-                            border:"1px solid oklch(0.34 0.03 85)",
-                            borderRadius:6,
-                            fontSize:10.5,
-                            cursor:"pointer",
-                            fontFamily:"'JetBrains Mono',monospace",
-                            letterSpacing:"0.04em",
-                          }}
-                          title="打开完整说明卡（含它的相关符号）">
-                          ↗ 完整
-                        </button>
-                      )}
-                      <button
-                        onClick={ev => { ev.stopPropagation(); removeExp(eid); }}
-                        style={{
-                          padding:"3px 8px",
-                          background:"transparent",
-                          color:"#a8a194",
-                          border:"1px solid oklch(0.34 0.03 85)",
-                          borderRadius:6,
-                          fontSize:12,
-                          cursor:"pointer",
-                          lineHeight:1,
-                        }}
-                        title="收起这一段">×</button>
-                    </div>
+                    <button
+                      onClick={ev => { ev.stopPropagation(); removeExp(eid); }}
+                      style={{
+                        padding:"3px 8px",
+                        background:"transparent",
+                        color:"#a8a194",
+                        border:"1px solid oklch(0.34 0.03 85)",
+                        borderRadius:6,
+                        fontSize:12,
+                        cursor:"pointer",
+                        lineHeight:1,
+                      }}
+                      title="收起这一段">×</button>
                   </div>
                   {exp.formula && (
                     <div style={{fontSize:14.5, color:"#f5f0e4",
