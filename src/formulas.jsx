@@ -52,9 +52,25 @@ const GLOSSARY = {
            formula:"H^{\\,a(L)}=\\sum_{\\ell=0}^{L-1}\\alpha^\\ell\\,\\hat S^{\\,\\ell}H_0^{\\,a}",
            desc:"属性图上的对应物。\n节点即使结构上无连接，只要属性接近，也会被 $\\hat S$ 聚到一起。",
            role:"分支输出" },
+  "Wt":   { tex:"W^{(t)}", name:"拓扑分支线性变换 · Topology weight",
+           formula:"W^{(t)}\\in\\mathbb R^{d\\times d'}",
+           desc:"论文 Eq.14 里的可学习矩阵，把拓扑分支的扩散输出 $H^{(t)}$ 映射到融合空间 $Z^{(t)}=H^{(t)}W^{(t)}$。\n通常 $d'\\le d$，起降维 + 对齐属性分支的作用。\n训练时和 $W^{(a)}$ 一起通过梯度更新。",
+           role:"可学习权重" },
+  "Wa":   { tex:"W^{(a)}", name:"属性分支线性变换 · Attribute weight",
+           formula:"W^{(a)}\\in\\mathbb R^{d\\times d'}",
+           desc:"和 $W^{(t)}$ 对称的可学习矩阵。\n$Z^{(a)}=H^{(a)}W^{(a)}$。\n两者独立训练 —— 让两分支在 fusion 前可以各自做一点特征重塑，再加权相加。",
+           role:"可学习权重" },
+  "Zt":   { tex:"Z^{(t)}", name:"拓扑分支变换后表示",
+           formula:"Z^{(t)}=H^{(t)}\\,W^{(t)}",
+           desc:"拓扑分支扩散输出经过 $W^{(t)}$ 线性变换后的节点表示。\n参与 $\\mathcal L_{\\text{cont}}$ 的三粒度对比（$\\mathcal L_{\\text{nod}}$、$\\mathcal L_{\\text{nei}}$、$\\mathcal L_{\\text{clu}}$）和去相关正则 $\\mathcal L_{\\text{dec}}$。\n最后参与 $H=\\beta Z^{(t)}+(1-\\beta)Z^{(a)}$。",
+           role:"分支输出 (transformed)" },
+  "Za":   { tex:"Z^{(a)}", name:"属性分支变换后表示",
+           formula:"Z^{(a)}=H^{(a)}\\,W^{(a)}",
+           desc:"和 $Z^{(t)}$ 对称的属性分支变换输出。\n与 $Z^{(t)}$ 一同参与融合、对比损失、去相关正则。",
+           role:"分支输出 (transformed)" },
   "H":    { tex:"H", name:"融合表示 · Fused embedding",
-           formula:"H=\\beta\\,H^{\\,t}+(1-\\beta)\\,H^{\\,a}",
-           desc:"$\\beta$ 控制两条分支的混合比例。\n**论文 Eq.14** 实际是 $Z^{(t)}=H^{(t)}W^{(t)}$、$Z^{(a)}=H^{(a)}W^{(a)}$（可学习线性变换），再 $H=\\beta Z^{(t)}+(1-\\beta)Z^{(a)}$；融合后会做 L2 归一化 $\\|H_i\\|_2=1$。\nplayground 简化：跳过 $W^{(t)}/W^{(a)}$，直接在 $H^{(t)}/H^{(a)}$ 上融合。\n最终 k-means 和所有损失都作用在 $H$ 上。",
+           formula:"H=\\beta\\,Z^{(t)}+(1-\\beta)\\,Z^{(a)},\\quad \\|H_i\\|_2=1",
+           desc:"**论文 Eq.14**：先做分支线性变换 $Z=HW$，再按 $\\beta$ 加权融合；融合后每行做 L2 归一化 $\\|H_i\\|_2=1$。\n$\\beta$ 控制两条分支的混合比例（同质图偏大、异质图偏小）。\n最终 k-means 和所有损失都作用在 $H$ 上。",
            role:"最终嵌入" },
 
   "alpha":{ tex:"\\alpha", name:"扩散步长 · Teleport (branch)",
@@ -224,7 +240,11 @@ const RELATED = {
   H0a:    ["Ahat","A","D"],                    // paper: B = top-d eigvec(Ã), Ã = D^{-1/2} A D^{-1/2}
   Ht:     ["L","alpha","Ahat","H0t","SigmaK"], // Hᵗ = Σ α^ℓ Â^ℓ H₀ᵗ
   Ha:     ["L","alpha","Shat","H0a","SigmaK"], // Hᵃ = Σ α^ℓ Ŝ^ℓ H₀ᵃ
-  H:      ["beta","Ht","Ha"],                  // H = β Hᵗ + (1-β) Hᵃ
+  Wt:     ["Ht","Zt"],                          // W^(t) maps H^(t) -> Z^(t)
+  Wa:     ["Ha","Za"],                          // W^(a) maps H^(a) -> Z^(a)
+  Zt:     ["Ht","Wt","H"],                      // Z^(t) = H^(t) W^(t)
+  Za:     ["Ha","Wa","H"],                      // Z^(a) = H^(a) W^(a)
+  H:      ["beta","Zt","Za"],                  // H = β Z^(t) + (1-β) Z^(a)
   alpha:  ["Ahat","H0t","H0a"],                // H^{ℓ+1} = α Â H^{ℓ} + H_0
   beta:   ["H","Ht","Ha"],                     // H = β Hᵗ + (1-β) Hᵃ
   L:      [],                                   // ℓ = 0,…,L-1
@@ -239,10 +259,10 @@ const RELATED = {
   Lrecons:["cos","H","Xhat","epsilon"],
   Lcluster:["cos","H","mu","tau","K"],         // -(1/n) Σ log[exp(cos(H_i,H̄_k)/τ) / Σ exp(...)]
   Lcont:  ["Lnod","Lnei","Lclu","Ldec"],       // w_dec L_dec + w_cont (L_nod + L_nei + L_clu)
-  Ldec:   ["H","I","Frob"],                    // ||HᵀH - I||_F²  (playground simplification)
-  Lnod:   ["Ht","Ha","Frob"],                  // ||Z^t - Z^a||_F²
-  Lnei:   ["Ht","Ha","N","L2"],                // neighbor-level invariance
-  Lclu:   ["Ht","Ha","C","K","L2"],            // cluster-level invariance
+  Ldec:   ["Zt","Za","I","Frob"],              // ||Z^T Z - I||_F² per branch
+  Lnod:   ["Zt","Za","Frob"],                  // ||Z^t - Z^a||_F²
+  Lnei:   ["Zt","Za","N","L2"],                // neighbor-level invariance
+  Lclu:   ["Zt","Za","C","K","L2"],            // cluster-level invariance
   I:      [],                                   // I ∈ ℝ^{d×d}
   SVDd:   ["Msvd","Ud","Sigd","Vd"],           // M ≈ U_d Σ_d V_dᵀ; SVD_d(M) = U_d Σ_d^{1/2}
   Msvd:   ["N","F"],                           // M ∈ ℝ^{N×N} or ℝ^{N×F}
@@ -711,7 +731,7 @@ function FormulaPanel({ step, tweaks }) {
       </Block>
 
       <Block active={id==="loss"} color={A_L} eyebrow="自监督损失 · LOSS"
-        onOpen={open} syms={["Lcont","Lnod","Lnei","Lclu","Ldec","Ht","Ha","H","I","Frob","Lcluster","cos","mu","tau","K","Lrecons","Xhat","epsilon"]}>
+        onOpen={open} syms={["Lcont","Lnod","Lnei","Lclu","Ldec","Zt","Za","H","I","Frob","Lcluster","cos","mu","tau","K","Lrecons","Xhat","epsilon"]}>
         <Eq hl={id==="loss"}
           tex="\mathcal L=\mathcal L_{\text{cont}}+\mathcal L_{\text{cluster}}+\mathcal L_{\text{recons}}"/>
         <Eq hl={id==="loss"}

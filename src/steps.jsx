@@ -38,10 +38,10 @@ const STEPS = [
   {
     id: "fusion",
     title: "双分支融合",
-    subtitle: "H = β·Hᵗ + (1-β)·Hᵃ",
+    subtitle: "Z = H·W (线性变换) → H = β·Zᵗ + (1-β)·Zᵃ → L2 归一化",
     active: ["top-diff", "attr-diff", "fusion"],
     formula: "fusion",
-    desc: "两条分支都走完后，用可调权重 β 线性融合 (或 concat / max)。β 靠近 1 更信任拓扑，靠近 0 更信任属性。异质图通常需要更小的 β。",
+    desc: "**论文 Eq.14** — 先分别做线性变换 Zᵗ=Hᵗ·Wᵗ、Zᵃ=Hᵃ·Wᵃ（Wᵗ/Wᵃ 可学习），再用可调权重 β 线性融合，最后每行 L2 归一化 ‖H_i‖=1。β 靠近 1 更信任拓扑，靠近 0 更信任属性；异质图通常需要更小的 β。",
   },
   {
     id: "kmeans",

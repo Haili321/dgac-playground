@@ -92,12 +92,12 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
   const A_C = "oklch(0.55 0.13 150)";
   const A_L = "oklch(0.50 0.05 260)";
 
-  const w = 1290, h = 320;
+  const w = 1410, h = 320;
   const on = k => activeSet.has(k);
   const go = id => onStepJump && onStepJump(id);
 
-  // X positions for stage columns (graph source + 5 stages)
-  const X = { graph: 20, input: 160, encode: 310, diff: 530, fusion: 810, cprop: 1050 };
+  // X positions for stage columns (graph source + 5 stages + transform)
+  const X = { graph: 20, input: 160, encode: 310, diff: 530, xform: 770, fusion: 930, cprop: 1170 };
   // Y bands: top branch (attr), bottom branch (topo), mid (fusion/cprop), loss bar
   const Y = { attr: 70, topo: 205, mid: 140, loss: 20, col: 278 };
 
@@ -131,6 +131,14 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
         label="拓扑分支扩散 top_agg"
         sub={`α·Â·H + H₀  ×${tweaks.topLayers}`}
         color={A_T} active={on("top-diff")} onClick={()=>go("topology")}/>
+
+      {/* linear transforms W^(t), W^(a) — paper Eq.14 */}
+      <PipeBlock x={X.xform} y={Y.attr} w={130} h={54}
+        label="线性变换 W^(a)" sub="Z^(a) = H^(a)·W^(a)" color={A_A}
+        active={on("fusion")} onClick={()=>go("fusion")}/>
+      <PipeBlock x={X.xform} y={Y.topo} w={130} h={54}
+        label="线性变换 W^(t)" sub="Z^(t) = H^(t)·W^(t)" color={A_T}
+        active={on("fusion")} onClick={()=>go("fusion")}/>
 
       {/* fusion */}
       <PipeBlock x={X.fusion} y={Y.mid} w={160} h={54}
@@ -184,9 +192,12 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
       {/* encode → diffusion */}
       <Arrow from={[X.encode+150, Y.attr+27]} to={[X.diff, Y.attr+27]}  active={on("attr-diff")} color={A_A}/>
       <Arrow from={[X.encode+150, Y.topo+27]} to={[X.diff, Y.topo+27]} active={on("top-diff")} color={A_T}/>
-      {/* diffusion → fusion */}
-      <Arrow from={[X.diff+210, Y.attr+27]} to={[X.fusion, Y.mid+20]}  active={on("fusion")} color={A_A}/>
-      <Arrow from={[X.diff+210, Y.topo+27]} to={[X.fusion, Y.mid+34]} active={on("fusion")} color={A_T}/>
+      {/* diffusion → transform (W) */}
+      <Arrow from={[X.diff+210, Y.attr+27]} to={[X.xform, Y.attr+27]}  active={on("fusion")} color={A_A}/>
+      <Arrow from={[X.diff+210, Y.topo+27]} to={[X.xform, Y.topo+27]} active={on("fusion")} color={A_T}/>
+      {/* transform → fusion */}
+      <Arrow from={[X.xform+130, Y.attr+27]} to={[X.fusion, Y.mid+20]}  active={on("fusion")} color={A_A}/>
+      <Arrow from={[X.xform+130, Y.topo+27]} to={[X.fusion, Y.mid+34]} active={on("fusion")} color={A_T}/>
       {/* fusion → kmeans (vertical) */}
       <Arrow from={[X.fusion+80, Y.mid+54]} to={[X.fusion+80, Y.mid+80]} active={on("kmeans")} color={A_F}/>
       {/* kmeans → cprop (diagonal up) */}
@@ -207,6 +218,7 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
       <text x={X.input+50}   y={Y.col} textAnchor="middle" style={{fontSize:10.5, fill:"#827d75", letterSpacing:"0.08em"}}>INPUT</text>
       <text x={X.encode+75}  y={Y.col} textAnchor="middle" style={{fontSize:10.5, fill:"#827d75", letterSpacing:"0.08em"}}>ENCODE</text>
       <text x={X.diff+105}   y={Y.col} textAnchor="middle" style={{fontSize:10.5, fill:"#827d75", letterSpacing:"0.08em"}}>DIFFUSION (L steps)</text>
+      <text x={X.xform+65}   y={Y.col} textAnchor="middle" style={{fontSize:10.5, fill:"#827d75", letterSpacing:"0.08em"}}>TRANSFORM (W)</text>
       <text x={X.fusion+80}  y={Y.col} textAnchor="middle" style={{fontSize:10.5, fill:"#827d75", letterSpacing:"0.08em"}}>FUSION + K-MEANS</text>
       <text x={X.cprop+100}  y={Y.col} textAnchor="middle" style={{fontSize:10.5, fill:"#827d75", letterSpacing:"0.08em"}}>C-PROP + OUTPUT</text>
 
