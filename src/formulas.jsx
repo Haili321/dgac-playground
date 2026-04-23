@@ -712,9 +712,10 @@ function FormulaPanel({ step, tweaks }) {
       </Block>
 
       <Block active={id==="fusion"} color={A_F} eyebrow="融合 · FUSION"
-        onOpen={open} syms={["H","beta","Ht","Ha"]}
-        note={`当前参数：β = ${tweaks.beta.toFixed(2)} · 也可用 concat 或 max`}>
-        <Eq hl={id==="fusion"} tex="H=\beta\,H^{t}+(1-\beta)\,H^{a}"/>
+        onOpen={open} syms={["H","beta","Zt","Za","Wt","Wa","Ht","Ha"]}
+        note={`当前参数：β = ${tweaks.beta.toFixed(2)} · 线性变换 W^(t)/W^(a) + 加权融合 + L2 归一化`}>
+        <Eq hl={id==="fusion"} tex="Z^{(t)}=H^{(t)}W^{(t)},\quad Z^{(a)}=H^{(a)}W^{(a)}"/>
+        <Eq hl={id==="fusion"} tex="H=\beta\,Z^{(t)}+(1-\beta)\,Z^{(a)},\quad \|H_i\|_2=1"/>
       </Block>
 
       <Block active={id==="kmeans"} color={A_C} eyebrow="初始聚类 · K-MEANS"
