@@ -173,6 +173,51 @@ const GLOSSARY = {
            role:"展开式" },
 };
 
+// Chips shown at the bottom of each popover — click to drill into a related symbol.
+const RELATED = {
+  X:      ["Ahat","Xhat","N","F"],
+  A:      ["Ahat","D","I","N"],
+  N:      ["X","A"],
+  F:      ["X"],
+  K:      ["C","C0","mu"],
+  Ahat:   ["A","D","alpha","L"],
+  Xhat:   ["X","L2","Shat"],
+  Shat:   ["Xhat","cos","Ahat"],
+  H0t:    ["Ahat","SVDd","MLP","Ht"],
+  H0a:    ["Shat","SVDd","MLP","Ha"],
+  Ht:     ["alpha","Ahat","H0t","L","SigmaK"],
+  Ha:     ["alpha","Shat","H0a","L","SigmaK"],
+  H:      ["beta","Ht","Ha"],
+  alpha:  ["Ahat","L","SigmaK"],
+  beta:   ["Ht","Ha","H"],
+  L:      ["alpha","SigmaK","Ht","Ha"],
+  Lc:     ["alpha","Ahat","C","C0"],
+  C0:     ["kmeans","onehot","H","K"],
+  C:      ["C0","alpha","Ahat","Lc"],
+  Xprop:  ["alpha","Ahat","Xhat","SVDd","SigmaK"],
+  mu:     ["C","H","tau","Lkm"],
+  tau:    ["mu","softmax","Lkm"],
+  gamma:  ["Lprop","Xprop"],
+  Lprop:  ["H","Xprop","gamma","cos"],
+  Lkm:    ["mu","C","H","tau","CE","softmax","argmax"],
+  LSSG:   ["Ht","Ha","MSE"],
+  Lort:   ["H","I","Frob"],
+  I:      ["Lort"],
+  SVDd:   ["H0t","H0a","Xprop"],
+  MLP:    ["H0t","H0a"],
+  kmeans: ["C0","H","cos"],
+  onehot: ["C0","kmeans"],
+  cos:    ["Shat","kmeans","Lprop"],
+  argmax: ["C","Lkm"],
+  CE:     ["Lkm","softmax"],
+  MSE:    ["LSSG","Ht","Ha"],
+  Frob:   ["Lort"],
+  L2:     ["Xhat"],
+  D:      ["Ahat","A"],
+  softmax:["Lkm","tau"],
+  SigmaK: ["Ht","Ha","Xprop","alpha"],
+};
+
 // ---- KaTeX renderer ---------------------------------------------------
 function Katex({ tex, display }) {
   const ref = useRefF(null);
@@ -275,7 +320,7 @@ function Block({ active, color, eyebrow, children, syms, onOpen, note }) {
   );
 }
 
-function Popover({ id, anchor, onClose }){
+function Popover({ id, anchor, onClose, onOpen }){
   if (!id || !anchor) return null;
   const e = GLOSSARY[id]; if (!e) return null;
   const r = anchor.getBoundingClientRect();
@@ -358,6 +403,58 @@ function Popover({ id, anchor, onClose }){
           ))}
         </div>
       </div>
+
+      {/* related symbols — click to drill further */}
+      {(() => {
+        const rels = (RELATED[id] || []).filter(k => GLOSSARY[k]);
+        if (!rels.length || !onOpen) return null;
+        return (
+          <div style={{padding:"14px 22px 18px",
+            borderTop:"1px solid oklch(0.28 0.02 80)",
+            background:"oklch(0.16 0.008 80)"}}>
+            <div style={{fontSize:10, color:"#827d75", letterSpacing:"0.18em", marginBottom:10,
+              fontFamily:"'JetBrains Mono',monospace", textTransform:"uppercase"}}>Related · 继续追问</div>
+            <div style={{display:"flex", flexWrap:"wrap", gap:8}}>
+              {rels.map(k => {
+                const r = GLOSSARY[k];
+                const zhName = (r.name||"").split(" · ")[0];
+                return (
+                  <button key={k}
+                    onClick={ev => { ev.stopPropagation(); onOpen(k, ev.currentTarget); }}
+                    title={zhName}
+                    style={{
+                      cursor:"pointer",
+                      padding:"5px 12px",
+                      background:"oklch(0.24 0.02 80)",
+                      color:"oklch(0.94 0.1 85)",
+                      border:"1px solid oklch(0.32 0.03 85)",
+                      borderRadius:999,
+                      fontSize:13,
+                      lineHeight:1.2,
+                      display:"inline-flex",
+                      alignItems:"center",
+                      gap:6,
+                      transition:"all 0.12s",
+                    }}
+                    onMouseEnter={ev => {
+                      ev.currentTarget.style.background = "oklch(0.30 0.04 85)";
+                      ev.currentTarget.style.borderColor = "oklch(0.48 0.08 85)";
+                    }}
+                    onMouseLeave={ev => {
+                      ev.currentTarget.style.background = "oklch(0.24 0.02 80)";
+                      ev.currentTarget.style.borderColor = "oklch(0.32 0.03 85)";
+                    }}>
+                    <Katex tex={r.tex} display={false}/>
+                    <span style={{fontSize:10.5, color:"#a8a194", fontFamily:"'Inter',sans-serif"}}>
+                      {zhName}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
   return ReactDOM.createPortal(content, document.body);
@@ -450,7 +547,7 @@ function FormulaPanel({ step, tweaks }) {
         <Eq hl={id==="output"} tex="\hat y_i=\arg\max_{k}\,C_{ik}"/>
       </Block>
 
-      <Popover id={pop.id} anchor={pop.anchor} onClose={close}/>
+      <Popover id={pop.id} anchor={pop.anchor} onClose={close} onOpen={open}/>
     </div>
   );
 }
