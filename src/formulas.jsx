@@ -206,7 +206,7 @@ const RELATED = {
   LSSG:   ["Ht","Ha","MSE"],
   Lort:   ["H","I","Frob"],
   I:      ["Lort"],
-  SVDd:   ["H0t","H0a","Xprop"],
+  SVDd:   ["Ahat","Shat","MLP","H0t","H0a","Xprop"], // inputs (Â, Ŝ) + alt (MLP) + outputs
   MLP:    ["H0t","H0a"],
   kmeans: ["C0","H","cos","K"],               // +K
   onehot: ["C0","kmeans"],
