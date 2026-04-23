@@ -120,7 +120,7 @@ const GLOSSARY = {
 
   // ---- Operators & functions ----
   "SVDd": { tex:"\\mathrm{SVD}_d", name:"截断奇异值分解 · Truncated SVD",
-           formula:"H_0^{\\,t}=\\mathrm{SVD}_d(\\hat A),\\qquad H_0^{\\,a}=\\mathrm{SVD}_d(\\hat S)",
+           formula:"M\\approx U_d\\,\\Sigma_d\\,V_d^\\top,\\qquad \\mathrm{SVD}_d(M)=U_d\\Sigma_d^{1/2}",
            desc:"取最大的 $d$ 个奇异值及其对应左右奇异向量，得到 $M$ 的最佳低秩近似（Eckart–Young）。\n在 DGAC 中用来把 $\\hat A\\in\\mathbb R^{N\\times N}$、$\\hat S\\in\\mathbb R^{N\\times N}$ 压到 $\\mathbb R^{N\\times d}$，得到两条分支的初值 $H_0^{\\,t}$、$H_0^{\\,a}$。\n相比随机初始化，SVD 能保留最多的全局结构信息。",
            role:"编码算子" },
   "MLP":  { tex:"\\mathrm{MLP}", name:"多层感知机",
@@ -171,6 +171,24 @@ const GLOSSARY = {
            formula:"H^{(L)}=\\sum_{\\ell=0}^{L-1}\\alpha^\\ell\\,\\hat A^{\\,\\ell}\\,H_0",
            desc:"APPNP 迭代 $H^{(\\ell+1)}=\\alpha\\hat A H^{(\\ell)}+H_0$ 展开后的闭式。\n几何级数的权重 $\\alpha^\\ell$ 保证收敛（$\\|\\hat A\\|\\le 1$, $\\alpha<1$）。",
            role:"展开式" },
+
+  // ---- SVD internals (referenced in SVD_d definition) ----
+  "Msvd": { tex:"M", name:"SVD 的输入矩阵",
+           formula:"M\\in\\mathbb R^{N\\times N}\\;\\text{或}\\;\\mathbb R^{N\\times F}",
+           desc:"SVD 的泛指输入矩阵。\n在 DGAC 里具体是 $\\hat A$（拓扑分支）、$\\hat S$（属性分支）、或 $\\sum_\\ell \\alpha^\\ell \\hat A^\\ell \\hat X$（X-prop）。",
+           role:"SVD 输入" },
+  "Ud":   { tex:"U_d", name:"左奇异向量",
+           formula:"U_d\\in\\mathbb R^{N\\times d}",
+           desc:"SVD 中前 $d$ 个左奇异向量组成的矩阵。\n每列是 $M M^\\top$ 的特征向量（按特征值递减排列）。\n是 $\\mathrm{SVD}_d$ 输出的核心：$H_0 = U_d\\,\\Sigma_d^{1/2}$。",
+           role:"SVD 内部" },
+  "Sigd": { tex:"\\Sigma_d", name:"奇异值对角阵",
+           formula:"\\Sigma_d=\\mathrm{diag}(\\sigma_1,\\dots,\\sigma_d),\\;\\sigma_1\\ge\\dots\\ge\\sigma_d\\ge 0",
+           desc:"对角线上是 $M$ 的前 $d$ 个最大奇异值 $\\sigma_i$。\n$\\mathrm{SVD}_d$ 取 $\\Sigma_d^{1/2}$，把奇异值的平方根吸收到左奇异向量上作为最终表示。",
+           role:"SVD 内部" },
+  "Vd":   { tex:"V_d", name:"右奇异向量",
+           formula:"V_d\\in\\mathbb R^{N\\times d}",
+           desc:"SVD 中前 $d$ 个右奇异向量组成的矩阵。\n每列是 $M^\\top M$ 的特征向量。\n在 $\\mathrm{SVD}_d(M)=U_d\\Sigma_d^{1/2}$ 里不直接参与输出，但出现在完整分解 $M\\approx U_d\\Sigma_d V_d^\\top$ 中。",
+           role:"SVD 内部" },
 };
 
 // Chips shown at the bottom of each popover — click to drill into a related symbol.
@@ -206,7 +224,11 @@ const RELATED = {
   LSSG:   ["Ht","Ha","MSE"],
   Lort:   ["H","I","Frob"],
   I:      ["Lort"],
-  SVDd:   ["Ahat","Shat","MLP","H0t","H0a","Xprop"], // inputs (Â, Ŝ) + alt (MLP) + outputs
+  SVDd:   ["Msvd","Ud","Sigd","Vd","Ahat","Shat","MLP","H0t","H0a","Xprop"], // def-side (M,U,Σ,V) + DGAC-side (inputs/outputs/alt)
+  Msvd:   ["Ud","Sigd","Vd","SVDd","Ahat","Shat"],
+  Ud:     ["Sigd","Vd","SVDd","Msvd"],
+  Sigd:   ["Ud","Vd","SVDd","Msvd"],
+  Vd:     ["Ud","Sigd","SVDd","Msvd"],
   MLP:    ["H0t","H0a"],
   kmeans: ["C0","H","cos","K"],               // +K
   onehot: ["C0","kmeans"],
