@@ -92,17 +92,22 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
   const A_C = "oklch(0.55 0.13 150)";
   const A_L = "oklch(0.50 0.05 260)";
 
-  const w = 1200, h = 320;
+  const w = 1290, h = 320;
   const on = k => activeSet.has(k);
   const go = id => onStepJump && onStepJump(id);
 
-  // X positions for 5 stage columns
-  const X = { input: 30, encode: 180, diff: 400, fusion: 680, cprop: 920 };
+  // X positions for stage columns (graph source + 5 stages)
+  const X = { graph: 20, input: 160, encode: 310, diff: 530, fusion: 810, cprop: 1050 };
   // Y bands: top branch (attr), bottom branch (topo), mid (fusion/cprop), loss bar
   const Y = { attr: 70, topo: 205, mid: 140, loss: 20, col: 278 };
 
   return (
     <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%", height:"auto", display:"block"}}>
+      {/* source graph G = (V, E, X) — fans out into X (features) and A (adjacency) */}
+      <PipeBlock x={X.graph} y={Y.mid-14} w={110} h={54}
+        label="图 G" sub="(V, E, X)" color="#3d3a35"
+        active={on("input-x")||on("input-a")} onClick={()=>go("input")}/>
+
       {/* input column */}
       <PipeBlock x={X.input} y={Y.attr} w={100} h={54} label="X" sub="N×F" color={A_A}
         active={on("input-x")} onClick={()=>go("input")}/>
@@ -155,6 +160,21 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
         color={A_L} active={on("loss")} dim={!on("loss")}
         onClick={()=>go("loss")}/>
 
+      {/* arrows — G → (X, A) */}
+      <Arrow from={[X.graph+110, Y.mid+0]}  to={[X.input, Y.attr+27]} active={on("input-x")} color={A_A} curve={-10}/>
+      <Arrow from={[X.graph+110, Y.mid+26]} to={[X.input, Y.topo+27]} active={on("input-a")} color={A_T} curve={10}/>
+      {/* formula labels on the G→X/A arrows */}
+      <text x={(X.graph+110+X.input)/2} y={(Y.mid+Y.attr+27)/2 - 6} textAnchor="middle"
+        style={{fontSize:10, fill:"#827d75", fontStyle:"italic",
+          fontFamily:"'JetBrains Mono',monospace", pointerEvents:"none"}}>
+        X: 节点特征
+      </text>
+      <text x={(X.graph+110+X.input)/2} y={(Y.mid+26+Y.topo+27)/2 + 14} textAnchor="middle"
+        style={{fontSize:10, fill:"#827d75", fontStyle:"italic",
+          fontFamily:"'JetBrains Mono',monospace", pointerEvents:"none"}}>
+        A_ij = 𝟙[(i,j) ∈ E]
+      </text>
+
       {/* arrows — input → encode */}
       <Arrow from={[X.input+100, Y.attr+27]} to={[X.encode, Y.attr+27]}  active={on("a-enc")||on("input-x")} color={A_A}/>
       <Arrow from={[X.input+100, Y.topo+27]} to={[X.encode, Y.topo+27]} active={on("s-enc")||on("input-a")} color={A_T}/>
@@ -180,6 +200,7 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
       <IterBadge x={X.cprop+100} y={Y.mid-10} active={on("cprop")} color={A_C} label={`Lc=${tweaks.cpropLayers}`}/>
 
       {/* column titles */}
+      <text x={X.graph+55}   y={Y.col} textAnchor="middle" style={{fontSize:10.5, fill:"#827d75", letterSpacing:"0.08em"}}>GRAPH</text>
       <text x={X.input+50}   y={Y.col} textAnchor="middle" style={{fontSize:10.5, fill:"#827d75", letterSpacing:"0.08em"}}>INPUT</text>
       <text x={X.encode+75}  y={Y.col} textAnchor="middle" style={{fontSize:10.5, fill:"#827d75", letterSpacing:"0.08em"}}>ENCODE</text>
       <text x={X.diff+105}   y={Y.col} textAnchor="middle" style={{fontSize:10.5, fill:"#827d75", letterSpacing:"0.08em"}}>DIFFUSION (L steps)</text>
