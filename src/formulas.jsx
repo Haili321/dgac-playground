@@ -321,8 +321,16 @@ function Block({ active, color, eyebrow, children, syms, onOpen, note }) {
 }
 
 function Popover({ id, anchor, onClose, onOpen }){
-  const [expandedId, setExpandedId] = useStateF(null);
-  useEffectF(() => { setExpandedId(null); }, [id]);
+  const [expandedIds, setExpandedIds] = useStateF([]);
+  useEffectF(() => { setExpandedIds([]); }, [id]);
+  // Main chip: toggle membership.  Nested chip: push (add if absent).  X button: remove.
+  const toggleExp = (k) => setExpandedIds(prev => {
+    const i = prev.indexOf(k);
+    if (i === -1) return [...prev, k];
+    return [...prev.slice(0, i), ...prev.slice(i + 1)];
+  });
+  const pushExp = (k) => setExpandedIds(prev => prev.includes(k) ? prev : [...prev, k]);
+  const removeExp = (k) => setExpandedIds(prev => prev.filter(x => x !== k));
   if (!id || !anchor) return null;
   const e = GLOSSARY[id]; if (!e) return null;
   const r = anchor.getBoundingClientRect();
@@ -406,11 +414,10 @@ function Popover({ id, anchor, onClose, onOpen }){
         </div>
       </div>
 
-      {/* related symbols — click chip to expand inline; re-click to collapse */}
+      {/* related symbols — stacked inline expansion */}
       {(() => {
         const rels = (RELATED[id] || []).filter(k => GLOSSARY[k]);
         if (!rels.length) return null;
-        const exp = expandedId && GLOSSARY[expandedId] ? GLOSSARY[expandedId] : null;
         return (
           <div style={{padding:"14px 22px 18px",
             borderTop:"1px solid oklch(0.28 0.02 80)",
@@ -421,10 +428,10 @@ function Popover({ id, anchor, onClose, onOpen }){
               {rels.map(k => {
                 const r = GLOSSARY[k];
                 const zhName = (r.name||"").split(" · ")[0];
-                const isExp = expandedId === k;
+                const isExp = expandedIds.includes(k);
                 return (
                   <button key={k}
-                    onClick={ev => { ev.stopPropagation(); setExpandedId(isExp ? null : k); }}
+                    onClick={ev => { ev.stopPropagation(); toggleExp(k); }}
                     title={zhName}
                     style={{
                       cursor:"pointer",
@@ -448,113 +455,127 @@ function Popover({ id, anchor, onClose, onOpen }){
               })}
             </div>
 
-            {/* inline expansion: formula + desc of the picked related symbol */}
-            {exp && (
-              <div style={{marginTop:14, padding:"12px 14px 14px",
-                background:"oklch(0.12 0.008 80)",
-                borderRadius:8,
-                border:"1px solid oklch(0.32 0.03 85)",
-                animation:"fmlFade 0.16s ease-out"}}>
-                <div style={{display:"flex", justifyContent:"space-between",
-                  alignItems:"center", marginBottom:10, paddingBottom:8,
-                  borderBottom:"1px dashed oklch(0.26 0.02 80)"}}>
-                  <div style={{display:"flex", alignItems:"baseline", gap:8}}>
-                    <span style={{fontSize:18, color:"oklch(0.94 0.1 85)"}}>
-                      <Katex tex={exp.tex} display={false}/>
-                    </span>
-                    <span style={{fontSize:12, color:"#e6dfce", fontWeight:600}}>
-                      {(exp.name||"").split(" · ")[0]}
-                    </span>
-                  </div>
-                  {onOpen && (
-                    <button
-                      onClick={ev => { ev.stopPropagation(); onOpen(expandedId, ev.currentTarget); }}
-                      style={{
-                        padding:"3px 10px",
-                        background:"transparent",
-                        color:"#a8a194",
-                        border:"1px solid oklch(0.34 0.03 85)",
-                        borderRadius:6,
-                        fontSize:10.5,
-                        cursor:"pointer",
-                        fontFamily:"'JetBrains Mono',monospace",
-                        letterSpacing:"0.04em",
-                      }}
-                      title="打开完整说明卡（含它的相关符号）">
-                      ↗ 完整
-                    </button>
-                  )}
-                </div>
-                {exp.formula && (
-                  <div style={{fontSize:14.5, color:"#f5f0e4",
-                    padding:"10px 12px",
-                    background:"oklch(0.09 0.008 80)",
-                    borderRadius:6,
-                    marginBottom:10,
-                    overflowX:"auto",
-                    display:"flex", justifyContent:"center", alignItems:"center",
-                    minHeight:40}}>
-                    <Katex tex={exp.formula} display/>
-                  </div>
-                )}
-                <div style={{fontSize:12, lineHeight:1.75, color:"#d4cbb8"}}>
-                  {exp.desc.split("\n").map((p,i)=>(
-                    <div key={i} style={{marginBottom:5}}>
-                      <InlineMath text={p}/>
+            {/* stacked expansion blocks — one per id in expandedIds */}
+            {expandedIds.map((eid, idx) => {
+              const exp = GLOSSARY[eid];
+              if (!exp) return null;
+              const subRels = (RELATED[eid] || []).filter(k => GLOSSARY[k]);
+              return (
+                <div key={eid+'-'+idx} style={{marginTop:idx===0?14:10, padding:"12px 14px 14px",
+                  background:"oklch(0.12 0.008 80)",
+                  borderRadius:8,
+                  border:"1px solid oklch(0.32 0.03 85)",
+                  animation:"fmlFade 0.16s ease-out"}}>
+                  <div style={{display:"flex", justifyContent:"space-between",
+                    alignItems:"center", marginBottom:10, paddingBottom:8,
+                    borderBottom:"1px dashed oklch(0.26 0.02 80)"}}>
+                    <div style={{display:"flex", alignItems:"baseline", gap:8}}>
+                      <span style={{fontSize:11, color:"#827d75",
+                        fontFamily:"'JetBrains Mono',monospace"}}>{idx+1}.</span>
+                      <span style={{fontSize:18, color:"oklch(0.94 0.1 85)"}}>
+                        <Katex tex={exp.tex} display={false}/>
+                      </span>
+                      <span style={{fontSize:12, color:"#e6dfce", fontWeight:600}}>
+                        {(exp.name||"").split(" · ")[0]}
+                      </span>
                     </div>
-                  ))}
-                </div>
+                    <div style={{display:"flex", gap:6}}>
+                      {onOpen && (
+                        <button
+                          onClick={ev => { ev.stopPropagation(); onOpen(eid, ev.currentTarget); }}
+                          style={{
+                            padding:"3px 10px",
+                            background:"transparent",
+                            color:"#a8a194",
+                            border:"1px solid oklch(0.34 0.03 85)",
+                            borderRadius:6,
+                            fontSize:10.5,
+                            cursor:"pointer",
+                            fontFamily:"'JetBrains Mono',monospace",
+                            letterSpacing:"0.04em",
+                          }}
+                          title="打开完整说明卡（含它的相关符号）">
+                          ↗ 完整
+                        </button>
+                      )}
+                      <button
+                        onClick={ev => { ev.stopPropagation(); removeExp(eid); }}
+                        style={{
+                          padding:"3px 8px",
+                          background:"transparent",
+                          color:"#a8a194",
+                          border:"1px solid oklch(0.34 0.03 85)",
+                          borderRadius:6,
+                          fontSize:12,
+                          cursor:"pointer",
+                          lineHeight:1,
+                        }}
+                        title="收起这一段">×</button>
+                    </div>
+                  </div>
+                  {exp.formula && (
+                    <div style={{fontSize:14.5, color:"#f5f0e4",
+                      padding:"10px 12px",
+                      background:"oklch(0.09 0.008 80)",
+                      borderRadius:6,
+                      marginBottom:10,
+                      overflowX:"auto",
+                      display:"flex", justifyContent:"center", alignItems:"center",
+                      minHeight:40}}>
+                      <Katex tex={exp.formula} display/>
+                    </div>
+                  )}
+                  <div style={{fontSize:12, lineHeight:1.75, color:"#d4cbb8"}}>
+                    {exp.desc.split("\n").map((p,i)=>(
+                      <div key={i} style={{marginBottom:5}}>
+                        <InlineMath text={p}/>
+                      </div>
+                    ))}
+                  </div>
 
-                {/* nested related chips — drill further without leaving this card */}
-                {(() => {
-                  const subRels = (RELATED[expandedId] || []).filter(k => GLOSSARY[k]);
-                  if (!subRels.length) return null;
-                  return (
+                  {/* nested chips — push to stack (append below) */}
+                  {subRels.length > 0 && (
                     <div style={{marginTop:12, paddingTop:10,
                       borderTop:"1px dashed oklch(0.26 0.02 80)"}}>
                       <div style={{fontSize:9.5, color:"#827d75", letterSpacing:"0.18em",
                         marginBottom:8, fontFamily:"'JetBrains Mono',monospace",
-                        textTransform:"uppercase"}}>继续 →</div>
+                        textTransform:"uppercase"}}>继续 → 追加到下方</div>
                       <div style={{display:"flex", flexWrap:"wrap", gap:6}}>
                         {subRels.map(k => {
                           const r = GLOSSARY[k];
                           const zhName = (r.name||"").split(" · ")[0];
+                          const already = expandedIds.includes(k);
                           return (
                             <button key={k}
-                              onClick={ev => { ev.stopPropagation(); setExpandedId(k); }}
-                              title={zhName}
+                              onClick={ev => { ev.stopPropagation(); pushExp(k); }}
+                              title={already ? `${zhName}（已展开）` : zhName}
+                              disabled={already}
                               style={{
-                                cursor:"pointer",
+                                cursor: already ? "default" : "pointer",
                                 padding:"3px 9px",
-                                background:"oklch(0.18 0.008 80)",
-                                color:"#d4cbb8",
-                                border:"1px solid oklch(0.28 0.02 80)",
+                                background: already ? "oklch(0.22 0.03 85)" : "oklch(0.18 0.008 80)",
+                                color: already ? "#827d75" : "#d4cbb8",
+                                border: already ? "1px solid oklch(0.32 0.04 85)" : "1px solid oklch(0.28 0.02 80)",
                                 borderRadius:999,
                                 fontSize:11.5,
                                 display:"inline-flex",
                                 alignItems:"center",
                                 gap:4,
+                                opacity: already ? 0.55 : 1,
                                 transition:"all 0.12s",
-                              }}
-                              onMouseEnter={ev => {
-                                ev.currentTarget.style.background = "oklch(0.24 0.02 80)";
-                                ev.currentTarget.style.borderColor = "oklch(0.38 0.05 85)";
-                              }}
-                              onMouseLeave={ev => {
-                                ev.currentTarget.style.background = "oklch(0.18 0.008 80)";
-                                ev.currentTarget.style.borderColor = "oklch(0.28 0.02 80)";
                               }}>
                               <Katex tex={r.tex} display={false}/>
-                              <span style={{fontSize:9.5, color:"#a8a194"}}>{zhName}</span>
+                              <span style={{fontSize:9.5,
+                                color: already ? "#6a655c" : "#a8a194"}}>{zhName}</span>
                             </button>
                           );
                         })}
                       </div>
                     </div>
-                  );
-                })()}
-              </div>
-            )}
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
       })()}
