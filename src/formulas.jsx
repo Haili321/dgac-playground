@@ -235,6 +235,34 @@ const GLOSSARY = {
            formula:"\\mathrm{trace}(C^\\top(I-\\tilde A)C)=\\textstyle\\sum_{k=1}^K \\mathcal D(C_{\\cdot k},\\tilde A),\\quad \\mathrm{trace}(H^\\top(I-\\tilde A)H)=\\textstyle\\sum_{i=1}^d \\mathcal D(H_{\\cdot i},\\tilde A)",
            desc:"论文 Eq.5 (Sec. 4.1) 的关键 insight —— 谱聚类 (Eq.3) 和 GNN Laplacian smoothing (Eq.4) 的 trace 目标都可以改写成 DE 之和。\n这意味着：\n  · 谱聚类 = 在图上最小化类指示矩阵 $C$ 的 DE\n  · GNN = 在图上最小化节点表示 $H$ 的 DE\n两者本质一致，只是作用对象不同（$C$ vs $H$）。\nDGAC 把这两件事合成一个统一框架：同时最小化 $H$ 的 DE（→ DGDN / Eq.9）和 $C$ 的 DE（→ GDC / Eq.8）。",
            role:"paper 理论统一" },
+  "Eq1Diff":{ tex:"\\text{Eq.1}", name:"通用图扩散 · Graph Diffusion",
+           formula:"p=x\\cdot\\textstyle\\sum_{\\ell=0}^{\\infty} w_\\ell\\,P^\\ell,\\quad \\textstyle\\sum_\\ell w_\\ell=1",
+           desc:"论文 Eq.1（Sec. 3.1）—— 图扩散的通用形式：种子信号 $x$ 按图转移矩阵 $P$ 传播，权重 $w_\\ell$ 累加多跳信息。\n$P$ 取法：$D^{-1}A$（随机游走）或 $\\tilde A$（对称归一化）。\n常见特例：\n  · $w_\\ell=(1-\\alpha)\\alpha^\\ell$：Personalized PageRank（APPNP 用的就是这个）\n  · 泊松权重：Heat kernel\nDGAC 里所有扩散（$H^t$ Eq.12、$H^a$ Eq.13、C-prop Eq.16）都是这个式子的特化。",
+           role:"理论基础" },
+  "Eq3Spec":{ tex:"\\text{Eq.3}", name:"谱聚类 trace 目标 · Spectral clustering",
+           formula:"\\min_{C^\\top C=I}\\;\\mathrm{trace}\\bigl(C^\\top(I-\\tilde A)\\,C\\bigr)",
+           desc:"论文 Eq.3（Sec. 3.2）—— RatioCut 松弛后的 trace 最小化形式。\nKy Fan 极值定理：约束 $C^\\top C=I$ 下的 trace 最小化，解是 $\\tilde A$ 的前 K 大特征向量。\n关键 insight（Eq.5）：trace$(C^\\top(I-\\tilde A)C)$ 等价于 $\\sum_k \\mathcal D(C_{\\cdot k},\\tilde A)$ —— 谱聚类 ≡ NCI 在图上的 DE 最小化。\n这是 DGAC Sec. 5.2 GDC 模块的起点（见 Eq.8）。",
+           role:"理论基础" },
+  "Eq4APPNP":{ tex:"\\text{Eq.4}", name:"GNN Laplacian 光滑 · APPNP 目标",
+           formula:"\\min_H\\;(1-\\alpha)\\|H-X\\|_F^2+\\alpha\\,\\mathrm{trace}\\bigl(H^\\top(I-\\tilde A)H\\bigr)",
+           desc:"论文 Eq.4（Sec. 3.3）—— 把 GNN（APPNP 代表）写成优化问题：\n  · $(1-\\alpha)\\|H-X\\|^2$：拟合初值 $X$（teleport 项）\n  · $\\alpha\\cdot\\text{trace}(H^\\top(I-\\tilde A)H)$：图上 Laplacian 光滑\n解是 Personalized PageRank：$H=(1-\\alpha)(I-\\alpha\\tilde A)^{-1}X$。\nLemma 1 的 Neumann 展开：$H=(1-\\alpha)\\sum_{\\ell}\\alpha^\\ell\\tilde A^\\ell X$，这就是 APPNP 的迭代形式。\nDGAC 的 Eq.10 和 Eq.11 是这个 template 的特化（$X\\to U$ 或 $B$）。",
+           role:"理论基础" },
+  "Eq10Topo":{ tex:"\\text{Eq.10}", name:"拓扑分支子问题 · Topology subproblem",
+           formula:"\\min_H\\;\\alpha\\,\\mathrm{trace}\\bigl(H^\\top(I-\\tilde A)H\\bigr)+\\|H-U\\|_F^2",
+           desc:"论文 Eq.10 —— DGDN 拓扑分支解耦出的子问题。\n和 Eq.4 APPNP 同形式（把 $X$ 换成 $U$）：\n  · $\\|H-U\\|^2$：贴近属性侧初值 $U=\\mathrm{SVD}_d(\\bar X)$\n  · $\\text{trace}(...(I-\\tilde A)H)$：在拓扑图 $\\tilde A$ 上光滑\n解就是 Eq.12：$H^{(t)}=\\sum_{\\ell=0}^{L_t}\\alpha^\\ell\\hat A^\\ell U$。\n交叉模态：输入是属性侧 $U$，扩散算子是拓扑侧 $\\hat A$。",
+           role:"理论目标（拓扑子问题）" },
+  "Eq11Attr":{ tex:"\\text{Eq.11}", name:"属性分支子问题 · Attribute subproblem",
+           formula:"\\min_H\\;\\|H-B\\|_F^2+\\alpha\\,\\mathrm{trace}\\bigl(H^\\top(I-\\tilde S)H\\bigr)",
+           desc:"论文 Eq.11 —— DGDN 属性分支解耦出的子问题，和 Eq.10 对称：\n  · $\\|H-B\\|^2$：贴近拓扑侧初值 $B=\\text{eig}_d(\\hat A)$\n  · $\\text{trace}(...(I-\\tilde S)H)$：在属性图 $\\tilde S$ 上光滑\n解就是 Eq.13：$H^{(a)}=\\sum_{\\ell=0}^{L_a}\\alpha^\\ell\\hat S^\\ell B$。\n交叉模态：输入是拓扑侧 $B$，扩散算子是属性侧 $\\hat S$。",
+           role:"理论目标（属性子问题）" },
+  "Eq15GDCre":{ tex:"\\text{Eq.15}", name:"GDC 重表述 · GDC reformulation",
+           formula:"\\min_C\\;\\|C-C^{(0)}\\|_F^2+\\gamma\\,\\mathrm{trace}\\bigl(C^\\top(I-\\tilde A)C\\bigr)",
+           desc:"论文 Eq.15（Sec. 5.2）—— 用 Lemma 5 把 GDC 目标（Eq.8）整理成与 Eq.4/Eq.10 同形式：\n  · $\\|C-C^{(0)}\\|^2$：软分配 $C$ 贴近初始硬分配 $C^{(0)}$\n  · $\\text{trace}(C^\\top(I-\\tilde A)C)$：在图 $\\tilde A$ 上光滑 $C$\nLemma 1 直接给闭式解 Eq.16：$C=\\sum_{\\ell=0}^{L_c}\\gamma^\\ell\\hat A^\\ell C^{(0)}$，即 C-prop 扩散。\n这个从「聚类目标」到「扩散迭代」的桥梁是 GDC 的核心数学技巧。",
+           role:"理论目标（GDC 重表述）" },
+  "Lemma1Neu":{ tex:"\\text{Lemma 1}", name:"Neumann 级数 · Neumann series",
+           formula:"(I-\\alpha M)^{-1}=\\textstyle\\sum_{\\ell=0}^\\infty \\alpha^\\ell M^\\ell,\\quad\\|\\alpha M\\|<1",
+           desc:"论文 Lemma 1（Sec. 3.3）—— 经典线代恒等式：主导特征值 $<1$ 时，$(I-\\alpha M)^{-1}$ 展开为 $\\alpha^\\ell M^\\ell$ 的几何级数和。\n收敛条件：$\\alpha<1$ 且 $\\|M\\|\\le 1$ —— 对 $\\tilde A, \\hat A, \\tilde S$ 都成立（特征值 $\\in[-1,1]$）。\n用途：把 Eq.10/11/15 的闭式解（矩阵求逆）变成 Eq.12/13/16 的迭代扩散形式，可以用 $L$ 步截断近似。\n这是 DGAC 「把优化问题变成扩散迭代」的核心数学工具。",
+           role:"paper 数学工具" },
   "Lemma2HR":{ tex:"\\text{Lemma 2}", name:"同质率 ↔ DE 关系 · HR ↔ DE",
            formula:"HR_{\\mathcal G}=\\tfrac{1}{2}-\\tfrac{1}{|E|}\\textstyle\\sum_{k=1}^K \\mathcal D(Y_{\\cdot k},A)",
            desc:"论文 Lemma 2 (Sec. 4.1) —— 图的同质率 $HR$ 等于 $1/2$ 减去真实类指示矩阵 $Y$（NCI 归一化）的 DE 之和（按边数归一）。\n直观：$Y$ 在图上越 smooth（DE 越小）$\\Rightarrow$ 相邻节点越倾向同类 $\\Rightarrow$ HR 越高。\nDGAC 敢声称 graph-agnostic 的理论锚点：\n  · 最小化 DE ≡ 在对应图上提升同质性\n  · 异质图上原图 $HR_{\\mathcal G}$ 低（Texas 0.108）$\\Rightarrow$ 难找到低 DE 的 $H$\n  · 但属性图 $HR_{\\mathcal H}$ 可能很高（Texas 0.422，Table 2）$\\Rightarrow$ 属性侧 smoothing 仍能捕捉簇结构",
@@ -294,8 +322,8 @@ const RELATED = {
   Msvd:   ["barX","Ahat","N","F"],             // M in SVD_d(M) is X̄ (for U) or uses Ahat (for B)
   H0a:    ["eigd","Ahat","A","D"],             // paper: B = top-d eigvec(Â)
   eigd:   ["Ahat","Atilde","H0a","SVDd"],      // top-d eigvec; used for B, compare with SVDd
-  Ht:     ["L","alpha","Ahat","H0t","SigmaK"], // Hᵗ = Σ α^ℓ Â^ℓ H₀ᵗ
-  Ha:     ["L","alpha","Shat","H0a","SigmaK"], // Hᵃ = Σ α^ℓ Ŝ^ℓ H₀ᵃ
+  Ht:     ["L","alpha","Ahat","H0t","SigmaK","Eq10Topo","Lemma1Neu"], // solves Eq.10 via Neumann expansion
+  Ha:     ["L","alpha","Shat","H0a","SigmaK","Eq11Attr","Lemma1Neu"], // solves Eq.11 via Neumann expansion
   Wt:     ["Ht","Zt"],                          // W^(t) maps H^(t) -> Z^(t)
   Wa:     ["Ha","Za"],                          // W^(a) maps H^(a) -> Z^(a)
   Zt:     ["Ht","Wt","H"],                      // Z^(t) = H^(t) W^(t)
@@ -306,7 +334,7 @@ const RELATED = {
   L:      [],                                   // ℓ = 0,…,L-1
   Lc:     ["C","gamma","Ahat","C0"],           // C^{ℓ+1} = γ Â C^{ℓ} + C_0  (paper uses γ, not α)
   C0:     ["onehot","kmeans","H","K","cos"],   // C_0 = onehot(k-means(H, K, cos))
-  C:      ["gamma","Ahat","C0","Lc"],          // C = Σ γ^ℓ Â^ℓ C^{(0)}
+  C:      ["gamma","Ahat","C0","Lc","Eq15GDCre","Lemma1Neu"], // solves Eq.15 via Neumann
   Xprop:  ["SVDd","alpha","Ahat","Xhat","SigmaK"], // X_prop = SVD_d(Σ α^ℓ Â^ℓ X̂)
   mu:     ["C","H","K"],                       // μ = Cᵀ H ∈ ℝ^{K×d}
   tau:    ["softmax","H","mu"],                // softmax(H μᵀ / τ)
@@ -323,12 +351,19 @@ const RELATED = {
   dv:     ["Nset","A","D"],                     // d(v_i) = |N(v_i)| = Σ_j A_ij
   Atilde: ["A","D","Ahat"],                     // paper version without self-loop
   Lap:    ["D","A","Atilde","DE"],             // L = D - A; used in DE = x^T L x
-  DE:     ["Eq9DGDN","Eq8GDC","Eq5Unify","Lemma2HR","Lap","Atilde","Shat","H","C"], // DE is the theoretical core
-  Eq9DGDN:["DE","Atilde","Shat","Ht","Ha","H"],
-  Eq8GDC: ["DE","Atilde","C","gamma","Lap"],
-  Eq5Unify:["DE","Atilde","Lap","H","C"],
+  DE:     ["Eq9DGDN","Eq8GDC","Eq5Unify","Eq3Spec","Eq4APPNP","Lemma2HR","Lap","Atilde","H","C"], // DE theoretical core
+  Eq9DGDN:["DE","Atilde","Shat","Ht","Ha","Eq10Topo","Eq11Attr"],
+  Eq8GDC: ["DE","Atilde","C","gamma","Eq15GDCre"],
+  Eq5Unify:["DE","Eq3Spec","Eq4APPNP","Atilde","Lap","H","C"],
   Lemma2HR:["HR","DE","Atilde","Shat"],
   HR:     ["Lemma2HR","DE","Atilde","Shat"],
+  Eq1Diff: ["Atilde","Ahat","alpha","SigmaK"],
+  Eq3Spec: ["DE","Atilde","Lap","C","Eq4APPNP","Eq5Unify"],
+  Eq4APPNP:["alpha","Atilde","Lap","H","Lemma1Neu","Eq10Topo","Eq11Attr"],
+  Eq10Topo:["alpha","Atilde","Ahat","H0t","Ht","Lemma1Neu","Eq9DGDN"],
+  Eq11Attr:["alpha","Shat","H0a","Ha","Lemma1Neu","Eq9DGDN"],
+  Eq15GDCre:["gamma","Atilde","C0","C","Lemma1Neu","Eq8GDC"],
+  Lemma1Neu:["alpha","SigmaK","Eq4APPNP","Eq10Topo","Eq11Attr","Eq15GDCre"],
   I:      [],                                   // I ∈ ℝ^{d×d}
   SVDd:   ["Msvd","Ud","Sigd","Vd"],           // M ≈ U_d Σ_d V_dᵀ; SVD_d(M) = U_d Σ_d^{1/2}
   Ud:     ["N"],                               // U_d ∈ ℝ^{N×d}
