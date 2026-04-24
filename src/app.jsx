@@ -35,7 +35,8 @@ const LINE_XITION = {
 // smooth even when other parts re-render.
 // ============================================================
 function CorrectionTheater({ wrongNode, neighbors, posOf, kmColor, flipColor,
-                             nbColors, votes, voteMaxK, clusterColors }) {
+                             nbColors, nbKmClusters, nbTruthClusters, nbIsWrong,
+                             protagonistTruthK, voteMaxK, clusterColors }) {
   const [wx, wy] = posOf(wrongNode);
   const DUR = 2.8;                        // full cycle seconds
   const tFlashIn    = 0.06;               // warning ring appears
@@ -53,8 +54,8 @@ function CorrectionTheater({ wrongNode, neighbors, posOf, kmColor, flipColor,
 
   const totalNb = neighbors.length;
   // vote-bar geometry (below protagonist)
-  const BAR_W = 38, BAR_H = 6;
-  const barX = wx - BAR_W/2, barY = wy + 12;
+  const BAR_W = 54, BAR_H = 10;
+  const barX = wx - BAR_W/2, barY = wy + 15;
 
   return (
     <g style={{pointerEvents:"none"}}>
@@ -114,7 +115,11 @@ function CorrectionTheater({ wrongNode, neighbors, posOf, kmColor, flipColor,
         );
       })}
 
-      {/* (4) vote-tally bar below protagonist — each cluster gets a wedge */}
+      {/* (4) vote-tally — ONE CELL PER NEIGHBOR (not one wedge per cluster).
+             Each cell shows that neighbor's current k-means color; a diagonal
+             hatch overlay flags neighbors whose k-means color ≠ their truth
+             (they're "wrong neighbors" whose vote still counts). Same-color
+             cells are kept adjacent for visual clustering. */}
       <rect x={barX} y={barY} width={BAR_W} height={BAR_H}
         fill="#f0eadf" rx={2} opacity="0">
         <animate attributeName="opacity"
@@ -123,26 +128,69 @@ function CorrectionTheater({ wrongNode, neighbors, posOf, kmColor, flipColor,
           dur={`${DUR}s`} repeatCount="indefinite"/>
       </rect>
       {(() => {
-        let xOff = 0;
+        const cellGap = 0.8;
+        const cellW = (BAR_W - cellGap*(totalNb-1)) / totalNb;
+        // Sort neighbors: winner km-cluster cells first, then by km-cluster index
+        const order = neighbors.map((_, i) => i).sort((a, b) => {
+          const ka = nbKmClusters[a], kb = nbKmClusters[b];
+          if (ka === voteMaxK && kb !== voteMaxK) return -1;
+          if (kb === voteMaxK && ka !== voteMaxK) return 1;
+          return ka - kb;
+        });
         const segs = [];
-        for (let k = 0; k < votes.length; k++) {
-          if (votes[k] === 0) continue;
-          const frac = votes[k] / totalNb;
-          const w = frac * BAR_W;
+        order.forEach((i, idx) => {
+          const k = nbKmClusters[i];
+          const truthK = nbTruthClusters[i];
           const isWinner = k === voteMaxK;
+          const isWrong = nbIsWrong[i];
+          // "supportive" = neighbor truly in same cluster as protagonist
+          //   (regardless of how km labeled it)
+          const isSupportive = truthK === protagonistTruthK;
+          const x = barX + idx * (cellW + cellGap);
+          const dotCx = x + cellW/2;
+          const dotCy = barY + BAR_H + 3.2;
           segs.push(
-            <rect key={"vt"+k} x={barX + xOff} y={barY} width={w} height={BAR_H}
-              fill={clusterColors[k]} rx={1} opacity="0"
-              stroke={isWinner ? "oklch(0.20 0.04 260)" : "none"}
-              strokeWidth={isWinner ? 1 : 0}>
-              <animate attributeName="opacity"
-                values={`0;0;1;1;0`}
-                keyTimes={`0;${tTallyStart};${tTallyFull};${tRescueEnd};1`}
-                dur={`${DUR}s`} repeatCount="indefinite"/>
-            </rect>
+            <g key={"vt"+i}>
+              {/* vote cell: fill = neighbor's km color (= its vote) */}
+              <rect x={x} y={barY} width={cellW} height={BAR_H}
+                fill={clusterColors[k]} rx={1} opacity="0"
+                stroke={isWinner ? "#1b1a18" : "none"}
+                strokeWidth={isWinner ? 0.9 : 0}>
+                <animate attributeName="opacity"
+                  values={`0;0;1;1;0`}
+                  keyTimes={`0;${tTallyStart};${tTallyFull};${tRescueEnd};1`}
+                  dur={`${DUR}s`} repeatCount="indefinite"/>
+              </rect>
+              {/* diagonal hatch — only for the rare wrong-km neighbor
+                  (km label disagrees with its truth); stays hidden on demos
+                  where every neighbor is correctly km-labeled. */}
+              {isWrong && [0.22, 0.50, 0.78].map((off, j) => (
+                <line key={"h"+j}
+                  x1={x + cellW*off - 2.6} y1={barY + BAR_H - 0.6}
+                  x2={x + cellW*off + 2.6} y2={barY + 0.6}
+                  stroke="#1b1a18" strokeWidth="1.5" opacity="0" strokeLinecap="round">
+                  <animate attributeName="opacity"
+                    values={`0;0;0.9;0.9;0`}
+                    keyTimes={`0;${tTallyStart};${tTallyFull};${tRescueEnd};1`}
+                    dur={`${DUR}s`} repeatCount="indefinite"/>
+                </line>
+              ))}
+              {/* truth dot below cell — colored by neighbor's TRUE cluster.
+                  Same color as cell = km correct; cross-protagonist color =
+                  heterophilic edge. A darker ring marks dots matching the
+                  protagonist's truth cluster (the "supportive" neighbors). */}
+              <circle cx={dotCx} cy={dotCy} r={2.6}
+                fill={clusterColors[truthK]} opacity="0"
+                stroke={isSupportive ? "#1b1a18" : "#fffdf7"}
+                strokeWidth={isSupportive ? 1.1 : 0.8}>
+                <animate attributeName="opacity"
+                  values={`0;0;1;1;0`}
+                  keyTimes={`0;${tTallyStart};${tTallyFull};${tRescueEnd};1`}
+                  dur={`${DUR}s`} repeatCount="indefinite"/>
+              </circle>
+            </g>
           );
-          xOff += w;
-        }
+        });
         return segs;
       })()}
 
@@ -314,13 +362,18 @@ function GraphView({ stepId, tweaks, iter, dgac }) {
       return b.votes[b.maj]/b.count - a.votes[a.maj]/a.count;
     });
     const r = rated[0];
+    const nbKmClusters = r.nbIds.map(id => kmColorPerm[dgac.km.assign[id]]);
+    const nbTruthClusters = r.nbIds.map(id => dgac.truth[id]);
     return {
       node: G.nodes[r.id],
       neighbors: r.nbIds.map(id => G.nodes[id]),
-      nbColors: r.nbIds.map(id => clusterColors[kmColorPerm[dgac.km.assign[id]]]),
+      nbColors: r.nbIds.map((_, i) => clusterColors[nbKmClusters[i]]),
+      nbKmClusters,
+      nbTruthClusters,
+      nbIsWrong: r.nbIds.map((id, i) => nbKmClusters[i] !== dgac.truth[id]),
+      protagonistTruthK: dgac.truth[r.id],
       kmColor: clusterColors[kmColorPerm[dgac.km.assign[r.id]]],
       flipColor: clusterColors[r.maj],
-      votes: r.votes,
       voteMaxK: r.maj,
     };
   }, [stepId, G, dgac.km.assign, dgac.truth, kmColorPerm, clusterColors]);
@@ -396,7 +449,10 @@ function GraphView({ stepId, tweaks, iter, dgac }) {
           kmColor={demoWrong.kmColor}
           flipColor={demoWrong.flipColor}
           nbColors={demoWrong.nbColors}
-          votes={demoWrong.votes}
+          nbKmClusters={demoWrong.nbKmClusters}
+          nbTruthClusters={demoWrong.nbTruthClusters}
+          nbIsWrong={demoWrong.nbIsWrong}
+          protagonistTruthK={demoWrong.protagonistTruthK}
           voteMaxK={demoWrong.voteMaxK}
           clusterColors={clusterColors}/>
       )}
@@ -406,7 +462,7 @@ function GraphView({ stepId, tweaks, iter, dgac }) {
         {colorMode==="truth" && "● 真实簇标签 (仅此处展示)"}
         {colorMode==="neutral" && "○ 节点随 H 位移 → 观察 H = αÂH+H₀ 收敛"}
         {colorMode==="pred" && stepId==="kmeans" && "● kmeans 初分配, ⬤ 标记误分配节点"}
-        {colorMode==="pred" && stepId==="cprop" && "● 演示：误分节点被邻居投票纠正 → C ← γÂC + C₀ (Eq.16)"}
+        {colorMode==="pred" && stepId==="cprop" && "● 上格=邻居 km 投票色 · 下点=邻居真实簇（深圈=与中心同簇的支持邻居）· Eq.16"}
         {colorMode==="pred" && stepId!=="kmeans" && stepId!=="cprop" && "● C-prop 平滑后的聚类结果, ⬤ 误分配"}
       </text>
     </svg>
