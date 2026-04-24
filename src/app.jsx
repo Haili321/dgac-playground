@@ -13,6 +13,172 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "animateIter": true
 }/*EDITMODE-END*/;
 
+// Smooth transition ease curve reused for nodes + edges when step changes.
+const SMOOTH_T = "cubic-bezier(0.4, 0, 0.2, 1)";
+const NODE_XITION = { transition: `transform 0.6s ${SMOOTH_T}` };
+const LINE_XITION = {
+  transition: `x1 0.6s ${SMOOTH_T}, y1 0.6s ${SMOOTH_T}, x2 0.6s ${SMOOTH_T}, y2 0.6s ${SMOOTH_T}, stroke 0.3s, stroke-width 0.3s, opacity 0.3s`,
+};
+
+// ============================================================
+// CorrectionTheater — plays out the "C-prop fixes a wrong node"
+// story. Picks one k-means-mis-assigned node whose neighbors
+// majority-vote the right cluster; every ~2.8s cycle:
+//   (1) orange warning ring flashes around protagonist
+//   (2) neighbor edges brighten + thicken
+//   (3) colored particles fly from each neighbor to protagonist
+//       (particle color = neighbor's current k-means color)
+//   (4) vote-tally bar below protagonist fills up
+//   (5) protagonist fill animates from wrong color → truth color
+//   (6) green "rescue" ring flashes to celebrate the fix
+// Entirely SMIL-driven (no React timers), so it stays buttery
+// smooth even when other parts re-render.
+// ============================================================
+function CorrectionTheater({ wrongNode, neighbors, posOf, kmColor, flipColor,
+                             nbColors, votes, voteMaxK, clusterColors }) {
+  const [wx, wy] = posOf(wrongNode);
+  const DUR = 2.8;                        // full cycle seconds
+  const tFlashIn    = 0.06;               // warning ring appears
+  const tFlashPeak  = 0.18;               // warning ring at max
+  const tEdgesOn    = 0.20;               // neighbor edges highlighted
+  const tParticle0  = 0.28;               // first particle leaves
+  const particleGap = 0.06;               // between particles
+  const tTravel     = 0.26;               // particle travel duration fraction
+  const tTallyStart = 0.55;
+  const tTallyFull  = 0.78;
+  const tFlipStart  = 0.80;
+  const tFlipEnd    = 0.86;
+  const tRescuePk   = 0.90;
+  const tRescueEnd  = 0.96;
+
+  const totalNb = neighbors.length;
+  // vote-bar geometry (below protagonist)
+  const BAR_W = 38, BAR_H = 6;
+  const barX = wx - BAR_W/2, barY = wy + 12;
+
+  return (
+    <g style={{pointerEvents:"none"}}>
+      {/* (2) neighbor edges — brighten during active phase */}
+      {neighbors.map((nb, i) => {
+        const [nx, ny] = posOf(nb);
+        return (
+          <line key={"cte"+i} x1={nx} y1={ny} x2={wx} y2={wy}
+            stroke="oklch(0.62 0.17 40)" strokeWidth="1" opacity="0">
+            <animate attributeName="opacity"
+              values={`0;0;0.9;0.9;0.2;0`}
+              keyTimes={`0;${tEdgesOn};${tEdgesOn+0.02};${tTallyFull};${tRescueEnd};1`}
+              dur={`${DUR}s`} repeatCount="indefinite"/>
+            <animate attributeName="stroke-width"
+              values={`1;1;2.6;2.6;1;1`}
+              keyTimes={`0;${tEdgesOn};${tEdgesOn+0.02};${tTallyFull};${tRescueEnd};1`}
+              dur={`${DUR}s`} repeatCount="indefinite"/>
+          </line>
+        );
+      })}
+
+      {/* (1) orange warning ring around protagonist */}
+      <circle cx={wx} cy={wy} r="10" fill="none"
+        stroke="oklch(0.65 0.20 38)" strokeWidth="2" opacity="0">
+        <animate attributeName="opacity"
+          values="0;0;1;0.85;0.2;0"
+          keyTimes={`0;${tFlashIn};${tFlashPeak};0.45;${tTallyFull};1`}
+          dur={`${DUR}s`} repeatCount="indefinite"/>
+        <animate attributeName="r"
+          values="10;10;22;17;12;10"
+          keyTimes={`0;${tFlashIn};${tFlashPeak};0.45;${tTallyFull};1`}
+          dur={`${DUR}s`} repeatCount="indefinite"/>
+      </circle>
+
+      {/* (3) color particles flowing from each neighbor → protagonist */}
+      {neighbors.map((nb, i) => {
+        const [nx, ny] = posOf(nb);
+        const delay = tParticle0 + i * particleGap;
+        // safe: delay + tTravel stays < tTallyFull
+        const arrive = Math.min(delay + tTravel, 0.77);
+        return (
+          <g key={"ptc"+i}>
+            <circle r="3.6" fill={nbColors[i]} opacity="0"
+              stroke="#fffdf7" strokeWidth="0.8">
+              <animateMotion
+                dur={`${DUR}s`} repeatCount="indefinite"
+                path={`M${nx},${ny} L${wx},${wy}`}
+                keyTimes={`0;${delay};${arrive};1`}
+                keyPoints="0;0;1;1"
+                calcMode="linear"/>
+              <animate attributeName="opacity"
+                values="0;0;1;1;0;0"
+                keyTimes={`0;${delay};${delay+0.015};${arrive-0.015};${arrive};1`}
+                dur={`${DUR}s`} repeatCount="indefinite"/>
+            </circle>
+          </g>
+        );
+      })}
+
+      {/* (4) vote-tally bar below protagonist — each cluster gets a wedge */}
+      <rect x={barX} y={barY} width={BAR_W} height={BAR_H}
+        fill="#f0eadf" rx={2} opacity="0">
+        <animate attributeName="opacity"
+          values="0;0;0.85;0.85;0"
+          keyTimes={`0;${tTallyStart};${tTallyStart+0.03};${tRescueEnd};1`}
+          dur={`${DUR}s`} repeatCount="indefinite"/>
+      </rect>
+      {(() => {
+        let xOff = 0;
+        const segs = [];
+        for (let k = 0; k < votes.length; k++) {
+          if (votes[k] === 0) continue;
+          const frac = votes[k] / totalNb;
+          const w = frac * BAR_W;
+          const isWinner = k === voteMaxK;
+          segs.push(
+            <rect key={"vt"+k} x={barX + xOff} y={barY} width={w} height={BAR_H}
+              fill={clusterColors[k]} rx={1} opacity="0"
+              stroke={isWinner ? "oklch(0.20 0.04 260)" : "none"}
+              strokeWidth={isWinner ? 1 : 0}>
+              <animate attributeName="opacity"
+                values={`0;0;1;1;0`}
+                keyTimes={`0;${tTallyStart};${tTallyFull};${tRescueEnd};1`}
+                dur={`${DUR}s`} repeatCount="indefinite"/>
+            </rect>
+          );
+          xOff += w;
+        }
+        return segs;
+      })()}
+
+      {/* (5) protagonist node — fill animates wrong → truth */}
+      <circle cx={wx} cy={wy} r={7.5}
+        fill={kmColor} stroke="#1b1a18" strokeWidth={1.8}>
+        <animate attributeName="fill"
+          values={`${kmColor};${kmColor};${flipColor};${flipColor}`}
+          keyTimes={`0;${tFlipStart};${tFlipEnd};1`}
+          dur={`${DUR}s`} repeatCount="indefinite"/>
+        <animate attributeName="stroke-width"
+          values={`1.8;1.8;2.4;1.2;1.2`}
+          keyTimes={`0;${tFlipStart};${tFlipEnd};${tRescueEnd};1`}
+          dur={`${DUR}s`} repeatCount="indefinite"/>
+        <animate attributeName="r"
+          values={`7.5;7.5;9.5;7.5;7.5`}
+          keyTimes={`0;${tFlipStart};${tFlipEnd};${tRescueEnd};1`}
+          dur={`${DUR}s`} repeatCount="indefinite"/>
+      </circle>
+
+      {/* (6) green rescue ring after flip */}
+      <circle cx={wx} cy={wy} r="10" fill="none"
+        stroke="oklch(0.62 0.16 150)" strokeWidth="2" opacity="0">
+        <animate attributeName="opacity"
+          values="0;0;1;0"
+          keyTimes={`0;${tFlipEnd};${tRescuePk};${tRescueEnd}`}
+          dur={`${DUR}s`} repeatCount="indefinite"/>
+        <animate attributeName="r"
+          values="10;10;28;28"
+          keyTimes={`0;${tFlipEnd};${tRescuePk};${tRescueEnd}`}
+          dur={`${DUR}s`} repeatCount="indefinite"/>
+      </circle>
+    </g>
+  );
+}
+
 // === Graph view: shows nodes, topology edges, optional attribute edges ===
 function GraphView({ stepId, tweaks, iter, dgac }) {
   const G = window.DEMO_GRAPHS[tweaks.dataset] || window.DEMO_GRAPHS.hetero;
@@ -86,10 +252,78 @@ function GraphView({ stepId, tweaks, iter, dgac }) {
   };
 
   // diffusion halos — SMIL-driven smooth pulse (independent of React re-render)
-  const showHalo = tweaks.animateIter && (stepId==="topology" || stepId==="attribute" || stepId==="cprop");
+  // Note: cprop step has its own CorrectionTheater, so we skip halo there to avoid visual clutter
+  const showHalo = tweaks.animateIter && (stepId==="topology" || stepId==="attribute");
   const haloColor = stepId==="topology" ? "oklch(0.55 0.13 250)"
                   : stepId==="attribute" ? "oklch(0.58 0.13 35)"
                   : "oklch(0.55 0.13 150)";
+
+  // k-means' own best color permutation (independent of predAssign's step-based choice)
+  // used for the CorrectionTheater: we want to show how k-means MIS-colored nodes get fixed.
+  const kmColorPerm = useMemo(() => {
+    const K = 4;
+    const perms = [];
+    const h = (a, k) => {
+      if (k === a.length) { perms.push(a.slice()); return; }
+      for (let i = k; i < a.length; i++) { [a[k],a[i]]=[a[i],a[k]]; h(a, k+1); [a[k],a[i]]=[a[i],a[k]]; }
+    };
+    h([0,1,2,3], 0);
+    let best = perms[0], bv = -1;
+    for (const p of perms) {
+      let c = 0;
+      for (let i = 0; i < dgac.km.assign.length; i++) if (p[dgac.km.assign[i]] === dgac.truth[i]) c++;
+      if (c > bv) { bv = c; best = p; }
+    }
+    return best;
+  }, [dgac.km.assign, dgac.truth]);
+
+  // Pick one "demo-friendly" wrong node for C-prop theater:
+  //   - was mis-assigned by k-means
+  //   - has ≥ 2 neighbors
+  //   - majority of neighbors' k-means colors point to the TRUTH cluster
+  //     (so the animation shows a clear win, not ambiguous voting)
+  const demoWrong = useMemo(() => {
+    if (stepId !== "cprop") return null;
+    const K = 4;
+    const kmAssign = dgac.km.assign;
+    const truth = dgac.truth;
+    const wrongIds = [];
+    for (let i = 0; i < G.nodes.length; i++) {
+      if (kmColorPerm[kmAssign[i]] !== truth[i]) wrongIds.push(i);
+    }
+    if (wrongIds.length === 0) return null;
+
+    const rated = wrongIds.map(id => {
+      const nbIds = [];
+      for (const [a, b] of G.edges) {
+        if (a === id) nbIds.push(b);
+        else if (b === id) nbIds.push(a);
+      }
+      const votes = new Array(K).fill(0);
+      for (const nb of nbIds) votes[kmColorPerm[kmAssign[nb]]]++;
+      let maj = 0;
+      for (let k = 1; k < K; k++) if (votes[k] > votes[maj]) maj = k;
+      return { id, nbIds, votes, maj, count: nbIds.length };
+    }).filter(r => r.count >= 2 && r.maj === truth[r.id]);
+
+    if (rated.length === 0) return null;
+    // prefer ~3 neighbors (visual clarity), tie-break by more correct neighbors
+    rated.sort((a, b) => {
+      const aDist = Math.abs(a.count - 3), bDist = Math.abs(b.count - 3);
+      if (aDist !== bDist) return aDist - bDist;
+      return b.votes[b.maj]/b.count - a.votes[a.maj]/a.count;
+    });
+    const r = rated[0];
+    return {
+      node: G.nodes[r.id],
+      neighbors: r.nbIds.map(id => G.nodes[id]),
+      nbColors: r.nbIds.map(id => clusterColors[kmColorPerm[dgac.km.assign[id]]]),
+      kmColor: clusterColors[kmColorPerm[dgac.km.assign[r.id]]],
+      flipColor: clusterColors[r.maj],
+      votes: r.votes,
+      voteMaxK: r.maj,
+    };
+  }, [stepId, G, dgac.km.assign, dgac.truth, kmColorPerm, clusterColors]);
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%", height:"auto", display:"block",
@@ -100,7 +334,7 @@ function GraphView({ stepId, tweaks, iter, dgac }) {
         </filter>
       </defs>
 
-      {/* topology edges */}
+      {/* topology edges — CSS transition smooths position changes when step shifts */}
       {showEdges && G.edges.map(([a,b],i)=>{
         const [x1,y1]=posOf(G.nodes[a]), [x2,y2]=posOf(G.nodes[b]);
         const sameClu = G.nodes[a].cluster===G.nodes[b].cluster;
@@ -108,7 +342,8 @@ function GraphView({ stepId, tweaks, iter, dgac }) {
           x1={x1} y1={y1} x2={x2} y2={y2}
           stroke={stepId==="topology"?"oklch(0.55 0.13 250)":"#cfc8ba"}
           strokeWidth={stepId==="topology"?1.4:0.9}
-          opacity={stepId==="topology"?0.6:(sameClu?0.5:0.35)}/>;
+          opacity={stepId==="topology"?0.6:(sameClu?0.5:0.35)}
+          style={LINE_XITION}/>;
       })}
 
       {/* attribute edges (dashed) */}
@@ -119,17 +354,20 @@ function GraphView({ stepId, tweaks, iter, dgac }) {
           stroke={"oklch(0.58 0.13 35)"}
           strokeWidth={1.2}
           strokeDasharray="3 3"
-          opacity={stepId==="attribute"?0.7:0.35}/>;
+          opacity={stepId==="attribute"?0.7:0.35}
+          style={LINE_XITION}/>;
       })}
 
-      {/* nodes */}
+      {/* nodes — wrapped in <g transform> so CSS transition smooths them when step changes.
+          The C-prop protagonist is skipped here — CorrectionTheater paints it instead. */}
       {G.nodes.map(n => {
+        if (demoWrong && demoWrong.node.id === n.id) return null;
         const [cx, cy] = posOf(n);
         const wrong = isWrongNode(n);
         return (
-          <g key={n.id}>
+          <g key={n.id} transform={`translate(${cx},${cy})`} style={NODE_XITION}>
             {showHalo && (
-              <circle cx={cx} cy={cy} r="6" fill="none"
+              <circle cx="0" cy="0" r="6" fill="none"
                 stroke={haloColor} strokeWidth="1.2" opacity="0.5">
                 <animate attributeName="r" values="6;24" dur="1.6s"
                   begin={`${(n.id%5)*0.12}s`} repeatCount="indefinite"/>
@@ -137,23 +375,39 @@ function GraphView({ stepId, tweaks, iter, dgac }) {
                   begin={`${(n.id%5)*0.12}s`} repeatCount="indefinite"/>
               </circle>
             )}
-            <circle cx={cx} cy={cy} r={7.5}
+            <circle cx="0" cy="0" r={7.5}
               fill={nodeFill(n)}
               stroke={wrong?"#1b1a18":"#fffdf7"}
-              strokeWidth={wrong?2:1.2}/>
+              strokeWidth={wrong?2:1.2}
+              style={{transition:"fill 0.5s ease, stroke 0.3s ease, stroke-width 0.3s ease"}}/>
             {wrong && (
-              <circle cx={cx+5} cy={cy-5} r={3} fill="#1b1a18"/>
+              <circle cx="5" cy="-5" r={3} fill="#1b1a18"/>
             )}
           </g>
         );
       })}
+
+      {/* C-prop correction theater — plays on cprop step */}
+      {demoWrong && (
+        <CorrectionTheater
+          wrongNode={demoWrong.node}
+          neighbors={demoWrong.neighbors}
+          posOf={posOf}
+          kmColor={demoWrong.kmColor}
+          flipColor={demoWrong.flipColor}
+          nbColors={demoWrong.nbColors}
+          votes={demoWrong.votes}
+          voteMaxK={demoWrong.voteMaxK}
+          clusterColors={clusterColors}/>
+      )}
 
       {/* legend / caption */}
       <text x={12} y={H-12} style={{fontSize:10.5, fill:"#827d75", fontFamily:"'JetBrains Mono',monospace"}}>
         {colorMode==="truth" && "● 真实簇标签 (仅此处展示)"}
         {colorMode==="neutral" && "○ 节点随 H 位移 → 观察 H = αÂH+H₀ 收敛"}
         {colorMode==="pred" && stepId==="kmeans" && "● kmeans 初分配, ⬤ 标记误分配节点"}
-        {colorMode==="pred" && stepId!=="kmeans" && "● C-prop 平滑后的聚类结果, ⬤ 误分配"}
+        {colorMode==="pred" && stepId==="cprop" && "● 演示：误分节点被邻居投票纠正 → C ← γÂC + C₀ (Eq.16)"}
+        {colorMode==="pred" && stepId!=="kmeans" && stepId!=="cprop" && "● C-prop 平滑后的聚类结果, ⬤ 误分配"}
       </text>
     </svg>
   );
