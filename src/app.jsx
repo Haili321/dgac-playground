@@ -85,9 +85,11 @@ function GraphView({ stepId, tweaks, iter, dgac }) {
     return [ (ax + dx*k) * W, (ay + dy*k) * H ];
   };
 
-  // diffusion halos for current iter
+  // diffusion halos — SMIL-driven smooth pulse (independent of React re-render)
   const showHalo = tweaks.animateIter && (stepId==="topology" || stepId==="attribute" || stepId==="cprop");
-  const haloR = 6 + (iter%3)*6;
+  const haloColor = stepId==="topology" ? "oklch(0.55 0.13 250)"
+                  : stepId==="attribute" ? "oklch(0.58 0.13 35)"
+                  : "oklch(0.55 0.13 150)";
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%", height:"auto", display:"block",
@@ -127,10 +129,13 @@ function GraphView({ stepId, tweaks, iter, dgac }) {
         return (
           <g key={n.id}>
             {showHalo && (
-              <circle cx={cx} cy={cy} r={haloR} fill="none"
-                stroke={stepId==="topology"?"oklch(0.55 0.13 250)":
-                        stepId==="attribute"?"oklch(0.58 0.13 35)":"oklch(0.55 0.13 150)"}
-                strokeWidth="1" opacity={0.3 - (iter%3)*0.08}/>
+              <circle cx={cx} cy={cy} r="6" fill="none"
+                stroke={haloColor} strokeWidth="1.2" opacity="0.5">
+                <animate attributeName="r" values="6;24" dur="1.6s"
+                  begin={`${(n.id%5)*0.12}s`} repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.55;0" dur="1.6s"
+                  begin={`${(n.id%5)*0.12}s`} repeatCount="indefinite"/>
+              </circle>
             )}
             <circle cx={cx} cy={cy} r={7.5}
               fill={nodeFill(n)}
