@@ -426,25 +426,39 @@ function InlineMath({ text }) {
   </>;
 }
 
+// Chips that represent core theoretical concepts — styled distinctly
+const FEATURED_CHIPS = new Set(["DE"]);
+
 function SymChip({ id, onOpen }) {
   const e = GLOSSARY[id]; if (!e) return null;
+  const featured = FEATURED_CHIPS.has(id);
+  const baseBg     = featured ? "oklch(0.93 0.08 75)" : "#faf7f1";
+  const baseBorder = featured ? "oklch(0.70 0.14 70)" : "#e3ddd2";
+  const hoverBg    = featured ? "oklch(0.96 0.1 75)"  : "#fff";
+  const hoverBord  = featured ? "oklch(0.55 0.16 65)" : "#c8c1b4";
+  const labelColor = featured ? "oklch(0.42 0.12 65)" : "#827d75";
   return (
     <button
       onClick={ev=>{ ev.stopPropagation(); onOpen(id, ev.currentTarget); }}
       style={{
         display:"inline-flex", alignItems:"center", gap:6,
         padding:"3px 10px 3px 9px",
-        background:"#faf7f1", border:"1px solid #e3ddd2",
+        background: baseBg,
+        border: `1px solid ${baseBorder}`,
         borderRadius:14, cursor:"pointer",
-        fontFamily:"'Inter',sans-serif", fontSize:11, color:"#3d3a35",
+        fontFamily:"'Inter',sans-serif", fontSize:11,
+        color: featured ? "oklch(0.3 0.08 65)" : "#3d3a35",
         transition:"background .15s, border-color .15s",
+        fontWeight: featured ? 600 : 400,
+        boxShadow: featured ? "0 0 0 1px oklch(0.85 0.08 75 / 0.5)" : "none",
       }}
-      onMouseEnter={ev=>{ ev.currentTarget.style.background="#fff"; ev.currentTarget.style.borderColor="#c8c1b4"; }}
-      onMouseLeave={ev=>{ ev.currentTarget.style.background="#faf7f1"; ev.currentTarget.style.borderColor="#e3ddd2"; }}
-      title={e.name}
+      onMouseEnter={ev=>{ ev.currentTarget.style.background=hoverBg; ev.currentTarget.style.borderColor=hoverBord; }}
+      onMouseLeave={ev=>{ ev.currentTarget.style.background=baseBg; ev.currentTarget.style.borderColor=baseBorder; }}
+      title={featured ? `★ ${e.name}（核心理论）` : e.name}
     >
-      <span style={{fontSize:13.5, color:"#1b1a18"}}><Katex tex={e.tex}/></span>
-      <span style={{color:"#827d75"}}>{e.name.split(" · ")[0]}</span>
+      {featured && <span style={{fontSize:10, color:"oklch(0.55 0.16 65)", marginRight:-2}}>★</span>}
+      <span style={{fontSize:13.5, color: featured ? "oklch(0.25 0.1 65)" : "#1b1a18"}}><Katex tex={e.tex}/></span>
+      <span style={{color: labelColor}}>{e.name.split(" · ")[0]}</span>
     </button>
   );
 }
