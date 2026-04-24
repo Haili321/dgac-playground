@@ -213,8 +213,16 @@ const GLOSSARY = {
            role:"paper 理论基础" },
   "DE":   { tex:"\\mathcal D", name:"狄利克雷能量 · Dirichlet Energy",
            formula:"\\mathcal D(x,A)=\\tfrac{1}{2}\\sum_{v_i,v_j\\in V}A_{ij}\\,(x_i-x_j)^2=x^\\top L\\,x",
-           desc:"论文 Definition 1 (Sec. 4.1) —— 节点信号 $x\\in\\mathbb R^n$ 在图 $A$ 上的光滑度度量。\n$\\mathcal D$ 小 $\\Rightarrow$ 相邻节点信号相近；$\\mathcal D$ 大 $\\Rightarrow$ 相邻差异大。\n多维信号 $X\\in\\mathbb R^{n\\times d}$ 时按列累加：$\\mathcal D(X, A)=\\mathrm{trace}(X^\\top L X)$。\n是 DGAC 整个理论框架的核心：\n  · $\\mathcal D(H_{\\cdot i},\\tilde A)$：拓扑侧 smoothing 目标（Eq.9）\n  · $\\mathcal D(H_{\\cdot i},\\tilde S)$：属性侧 smoothing 目标\n  · $\\mathcal D(C_{\\cdot k},\\tilde A)$：GDC 聚类目标（Eq.8）\nLemma 2 给出 $\\mathcal D$ 和 homophily ratio 的解析联系。",
+           desc:"论文 Definition 1 (Sec. 4.1) —— 节点信号 $x\\in\\mathbb R^n$ 在图 $A$ 上的光滑度度量。\n$\\mathcal D$ 小 $\\Rightarrow$ 相邻节点信号相近；$\\mathcal D$ 大 $\\Rightarrow$ 相邻差异大。\n多维信号 $X\\in\\mathbb R^{n\\times d}$ 时按列累加：$\\mathcal D(X, A)=\\mathrm{trace}(X^\\top L X)$。\n是 DGAC 整个理论框架的核心：\n  · $\\mathcal D(H_{\\cdot i},\\tilde A)+\\mathcal D(H_{\\cdot i},\\tilde S)$：DGDN 双图联合目标（见 Eq9DGDN 卡，点击 Related 的 [Eq.9 DGDN 目标]）\n  · $\\mathcal D(C_{\\cdot k},\\Lambda)+\\mathcal D(C_{\\cdot k},\\tilde A)$：GDC 聚类目标（见 Eq8GDC 卡）\nLemma 2 给出 $\\mathcal D$ 和 homophily ratio 的解析联系。",
            role:"paper 核心目标函数" },
+  "Eq9DGDN":{ tex:"\\text{Eq.9 (DGDN)}", name:"DGDN 双图联合目标 · Eq.9",
+           formula:"\\min_{H^\\top H=I}\\;\\textstyle\\sum_{i=1}^d \\mathcal D(H_{\\cdot i},\\tilde A)+\\mathcal D(H_{\\cdot i},\\tilde S)",
+           desc:"论文 Eq.9 —— DGDN 的核心优化问题：同时最小化节点表示 $H$ 在**拓扑图** $\\tilde A$ 和**属性图** $\\tilde S$ 上的 Dirichlet Energy。\n直观：让 $H$ 在两张图上都 smooth（邻居表示接近）。\n解耦策略：拆成两个子问题（Eq.10 和 Eq.11），各自 smoothing 得 $H^{(t)}$ 和 $H^{(a)}$，再做线性变换 $Z=HW$ 后融合（Eq.14）。\n约束 $H^\\top H = I$：保证列正交（Stiefel manifold），避免平凡解。\n这是 DGAC 引入**双图 smoothing** 的总体目标。",
+           role:"paper 理论目标（分支）" },
+  "Eq8GDC": { tex:"\\text{Eq.8 (GDC)}", name:"GDC 聚类目标 · Eq.8",
+           formula:"\\min_C\\;\\textstyle\\sum_{k=1}^K (1-\\gamma)\\,\\mathcal D(C_{\\cdot k},\\Lambda)+\\gamma\\,\\mathcal D(C_{\\cdot k},\\tilde A)",
+           desc:"论文 Eq.8 —— GDC（Graph Diffusion Clustering）的聚类目标：以簇指示矩阵 $C$ 为变量，同时最小化 $C$ 在**输入图** $\\tilde A$ 和**表示空间的 affinity 图** $\\Lambda=HH^\\top$ 上的 DE。\n$\\gamma\\in[0,1]$ 平衡两者：$\\gamma$ 大偏向原图拓扑，$\\gamma$ 小偏向表示空间 affinity。\n解出来是 Lemma 5 → Eq.16：$C=\\sum_{\\ell=0}^{L_C}\\gamma^\\ell\\tilde A^\\ell C^{(0)}$（C-prop 扩散形式）。\n这里的 $\\gamma$ 就是 C-prop 的衰减系数（和分支扩散的 $\\alpha$ 独立）。",
+           role:"paper 理论目标（聚类）" },
   "D":    { tex:"D", name:"度对角矩阵 · Degree matrix",
            formula:"D=\\mathrm{diag}\\bigl(d(v_1),\\dots,d(v_N)\\bigr),\\quad D_{ii}=d(v_i)=\\textstyle\\sum_j A_{ij}",
            desc:"论文 Sec. 3.1 —— 对角矩阵，第 $i$ 个对角元是节点 $v_i$ 的度 $d(v_i)=|\\mathcal N(v_i)|$，非对角元全为 $0$。\n直观：节点连得越密 $\\Rightarrow$ 对角元越大；孤立节点对角元为 $0$（导致 $D^{-1/2}$ 数值问题，GCN 靠自环 $A+I$ 避免）。\n\n四大用途（均为对称归一化的 building block）：\n  · $\\tilde A=D^{-1/2}AD^{-1/2}$：paper 归一化邻接（Sec. 3.1）\n  · $L=D-A$：拉普拉斯；归一化版 $L_{\\text{sym}}=I-\\tilde A$\n  · $\\bar X=\\mathrm{diag}(d)^{-1/2}X$：度归一化特征，$U=\\mathrm{SVD}_d(\\bar X)$ 用（Lemma 3）\n  · $\\mathcal D(x,A)=x^\\top Lx$ 里的 $L$ 间接依赖 $D$\n\n为什么 $D^{-1/2}$（而不是 $D^{-1}$）？\n  · $D^{-1}A$ 是 row-stochastic 的随机游走矩阵，但不对称，谱分析不方便\n  · $D^{-1/2}AD^{-1/2}$ 保持对称，特征值 $\\in[-1,1]$，扩散迭代稳定\n\nplayground vs paper 差异：\n  · 这里 $D$ 跟随 paper 约定（$A$ 的度，无自环）\n  · playground 的 $\\hat A$ 里用的是 $\\tilde D=\\mathrm{diag}(\\sum_j(A+I)_{ij})$（$A+I$ 的度），与这里的 $D$ 差 $+1$\n  · 在大多数非 pathological 图上，两种约定的下游结果几乎一致",
@@ -293,7 +301,9 @@ const RELATED = {
   dv:     ["Nset","A","D"],                     // d(v_i) = |N(v_i)| = Σ_j A_ij
   Atilde: ["A","D","Ahat"],                     // paper version without self-loop
   Lap:    ["D","A","Atilde","DE"],             // L = D - A; used in DE = x^T L x
-  DE:     ["Lap","Atilde","Ahat","Shat","H","C"], // D(x, A) = x^T L x; minimized over H and C
+  DE:     ["Eq9DGDN","Eq8GDC","Lap","Atilde","Shat","H","C"], // D(x, A) = x^T L x; two key applications as Eq chips
+  Eq9DGDN:["DE","Atilde","Shat","Ht","Ha","H"],
+  Eq8GDC: ["DE","Atilde","C","gamma","Lap"],
   I:      [],                                   // I ∈ ℝ^{d×d}
   SVDd:   ["Msvd","Ud","Sigd","Vd"],           // M ≈ U_d Σ_d V_dᵀ; SVD_d(M) = U_d Σ_d^{1/2}
   Ud:     ["N"],                               // U_d ∈ ℝ^{N×d}
