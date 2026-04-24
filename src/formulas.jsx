@@ -160,7 +160,7 @@ const GLOSSARY = {
 
   // ---- Operators & functions ----
   "eigd": { tex:"\\text{top-}d\\,\\mathrm{eigvec}", name:"前 d 个特征向量 · Top-d eigenvectors",
-           formula:"\\mathrm{top\\text{-}}d\\,\\mathrm{eigvec}(M)=\\bigl[v_1,\\dots,v_d\\bigr],\\quad Mv_k=\\lambda_k v_k,\\;\\lambda_1\\ge\\dots\\ge\\lambda_d",
+           formula:"\\begin{aligned}\\mathrm{top\\text{-}}d\\,\\mathrm{eigvec}(M)&=[v_1,\\,v_2,\\,\\dots,\\,v_d]\\\\ \\text{s.t.}\\;M v_k&=\\lambda_k v_k\\\\ \\lambda_1&\\ge\\lambda_2\\ge\\dots\\ge\\lambda_d\\end{aligned}",
            desc:"方阵 $M$ 的前 $d$ 大特征值对应的特征向量按列拼接成的 $n\\times d$ 矩阵（特征值降序）。\n在 DGAC 中用来算 $B=\\mathrm{top\\text{-}}d\\,\\mathrm{eigvec}(\\hat A)$：属性分支初值 $B$ 是归一化邻接 $\\hat A$ 的前 $d$ 个特征向量。\n对称矩阵（如 $\\hat A$）用对称特征分解算法（一般 $O(n^3)$；大图上用 Lanczos / 随机化方法加速到 $O(nnzd)$）。\n和 $\\mathrm{SVD}_d$ 的对比：\n  · $\\mathrm{SVD}_d(M)$：对任意 $n\\times m$ 矩阵取前 $d$ 个左奇异向量\n  · $\\mathrm{top\\text{-}}d\\,\\mathrm{eigvec}(M)$：只对方阵（通常对称），取前 $d$ 个特征向量\n对称矩阵时 $\\mathrm{eigvec}=\\mathrm{SVD}$ 的左奇异向量（等价），但后者数值实现在非对称时仍有效。",
            role:"线代算子" },
   "SVDd": { tex:"\\mathrm{SVD}_d", name:"截断奇异值分解 · Truncated SVD",
