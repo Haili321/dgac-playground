@@ -159,6 +159,10 @@ const GLOSSARY = {
            desc:"$d\\times d$ 单位矩阵。仅在正交正则 $\\mathcal L_{\\text{ort}}$ 里出现。", role:"常量" },
 
   // ---- Operators & functions ----
+  "eigd": { tex:"\\text{top-}d\\,\\mathrm{eigvec}", name:"前 d 个特征向量 · Top-d eigenvectors",
+           formula:"\\mathrm{top\\text{-}}d\\,\\mathrm{eigvec}(M)=\\bigl[v_1,\\dots,v_d\\bigr],\\quad Mv_k=\\lambda_k v_k,\\;\\lambda_1\\ge\\dots\\ge\\lambda_d",
+           desc:"方阵 $M$ 的前 $d$ 大特征值对应的特征向量按列拼接成的 $n\\times d$ 矩阵（特征值降序）。\n在 DGAC 中用来算 $B=\\mathrm{top\\text{-}}d\\,\\mathrm{eigvec}(\\hat A)$：属性分支初值 $B$ 是归一化邻接 $\\hat A$ 的前 $d$ 个特征向量。\n对称矩阵（如 $\\hat A$）用对称特征分解算法（一般 $O(n^3)$；大图上用 Lanczos / 随机化方法加速到 $O(nnzd)$）。\n和 $\\mathrm{SVD}_d$ 的对比：\n  · $\\mathrm{SVD}_d(M)$：对任意 $n\\times m$ 矩阵取前 $d$ 个左奇异向量\n  · $\\mathrm{top\\text{-}}d\\,\\mathrm{eigvec}(M)$：只对方阵（通常对称），取前 $d$ 个特征向量\n对称矩阵时 $\\mathrm{eigvec}=\\mathrm{SVD}$ 的左奇异向量（等价），但后者数值实现在非对称时仍有效。",
+           role:"线代算子" },
   "SVDd": { tex:"\\mathrm{SVD}_d", name:"截断奇异值分解 · Truncated SVD",
            formula:"M\\approx U_d\\,\\Sigma_d\\,V_d^\\top,\\qquad \\mathrm{SVD}_d(M)=U_d\\Sigma_d^{1/2}",
            desc:"取最大的 $d$ 个奇异值及其对应左右奇异向量，得到 $M$ 的最佳低秩近似（Eckart–Young）。\n在 DGAC 中用来把 $\\hat A\\in\\mathbb R^{N\\times N}$、$\\hat S\\in\\mathbb R^{N\\times N}$ 压到 $\\mathbb R^{N\\times d}$，得到两条分支的初值 $H_0^{\\,t}$、$H_0^{\\,a}$。\n相比随机初始化，SVD 能保留最多的全局结构信息。",
@@ -288,7 +292,8 @@ const RELATED = {
   barX:   ["X","dS","SVDd","Shat"],            // X̄ = diag(d)^{-1/2} X, d from S-graph
   dS:     ["Shat","X","barX","dv"],            // d_i = Σ_j S_ij (attribute affinity graph degree)
   Msvd:   ["barX","Ahat","N","F"],             // M in SVD_d(M) is X̄ (for U) or uses Ahat (for B)
-  H0a:    ["Ahat","A","D"],                    // paper: B = top-d eigvec(Ã), Ã = D^{-1/2} A D^{-1/2}
+  H0a:    ["eigd","Ahat","A","D"],             // paper: B = top-d eigvec(Â)
+  eigd:   ["Ahat","Atilde","H0a","SVDd"],      // top-d eigvec; used for B, compare with SVDd
   Ht:     ["L","alpha","Ahat","H0t","SigmaK"], // Hᵗ = Σ α^ℓ Â^ℓ H₀ᵗ
   Ha:     ["L","alpha","Shat","H0a","SigmaK"], // Hᵃ = Σ α^ℓ Ŝ^ℓ H₀ᵃ
   Wt:     ["Ht","Zt"],                          // W^(t) maps H^(t) -> Z^(t)
@@ -753,7 +758,7 @@ function FormulaPanel({ step, tweaks }) {
       </Block>
 
       <Block active={id==="encode"} color={A_A} eyebrow="输入编码 · ENCODE（交叉模态）"
-        onOpen={open} syms={["Xhat","X","L2","Shat","Ahat","barX","dS","H0t","H0a","SVDd"]}>
+        onOpen={open} syms={["Xhat","X","L2","Shat","Ahat","barX","dS","H0t","H0a","SVDd","eigd"]}>
         <Eq hl={id==="encode"} tex="\hat X=X\,/\,\|X\|_2,\qquad \hat S=\hat X\hat X^\top,\qquad \bar X=\mathrm{diag}(d)^{-1/2}X"/>
         <Eq hl={id==="encode"}
           tex="H_0^{\,t}=U=\mathrm{SVD}_d(\bar X),\qquad H_0^{\,a}=B=\text{top-}d\,\text{eigvec}(\hat A)"/>
