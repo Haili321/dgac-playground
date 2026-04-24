@@ -2,7 +2,26 @@
 
 const { useState: useStateX, useEffect: useEffectX, useMemo: useMemoX } = React;
 
-function LossBarCard({ name, formula, value, color, active, pulsing }) {
+// Inline KaTeX for HTML context (LossBreakdown). Simpler than pipeline's SubKatex
+// (no foreignObject needed since we're already in HTML). Renders into a span;
+// falls back to the raw TeX string if KaTeX isn't loaded or parse fails.
+function InlineKatex({ tex, style, displayMode=false }) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!ref.current) return;
+    if (!window.katex) { ref.current.textContent = tex; return; }
+    try {
+      window.katex.render(tex, ref.current, {
+        throwOnError: false, displayMode, strict: "ignore",
+      });
+    } catch (e) {
+      if (ref.current) ref.current.textContent = tex;
+    }
+  }, [tex, displayMode]);
+  return <span ref={ref} style={style}/>;
+}
+
+function LossBarCard({ nameTex, formulaTex, value, color, active, pulsing }) {
   const pct = Math.max(4, Math.min(100, value*100));
   return (
     <div style={{
@@ -19,10 +38,12 @@ function LossBarCard({ name, formula, value, color, active, pulsing }) {
         }}/>
       )}
       <div style={{display:"flex", justifyContent:"space-between", alignItems:"baseline"}}>
-        <span style={{fontSize:11.5, fontWeight:600, color:active?color:"#3d3a35"}}>{name}</span>
+        <InlineKatex tex={nameTex} style={{fontSize:12.5, color:active?color:"#3d3a35"}}/>
         <span className="mono" style={{fontSize:10.5, color:"#827d75"}}>{value.toFixed(3)}</span>
       </div>
-      <div className="mono" style={{fontSize:10.5, color:"#827d75", marginTop:4, lineHeight:1.5}}>{formula}</div>
+      <div style={{fontSize:11.5, color:"#575049", marginTop:6, lineHeight:1.5, overflowX:"auto", whiteSpace:"nowrap"}}>
+        <InlineKatex tex={formulaTex}/>
+      </div>
       <div style={{height:3, background:"#f0eadf", borderRadius:2, marginTop:8, overflow:"hidden"}}>
         <div style={{
           width:`${pct}%`, height:"100%", background:color,
@@ -38,11 +59,37 @@ function LossBreakdown({ active, tick }) {
   const t = (tick % 40) / 40;
   const decay = (lvl, base) => base * (0.4 + 0.6*Math.exp(-lvl*3*t)) * (0.9 + 0.1*Math.sin(tick*0.7+lvl));
   const C_L = "oklch(0.50 0.05 260)";
+  // Paper-faithful LaTeX. L_cont = Eq.18, L_cluster = Eq.19, L_recons = Eq.20,
+  // L_dec = Sec. 5.3 (sits inside L_cont with weight w_dec).
   const items = [
-    { k:"L_cont",    f:"w_dec·L_dec + w_cont·(L_nod+L_nei+L_clu)",  v:decay(1.2, 0.55), color:"oklch(0.58 0.13 35)"  },
-    { k:"L_cluster", f:"−(1/n) Σ log[e^{cos(H_i,H̄_k)/τ} / Σ_j e^{cos(H_i,H̄_j)/τ}]",  v:decay(0.8, 0.60), color:"oklch(0.55 0.13 150)" },
-    { k:"L_recons",  f:"(1/n) Σ_i (1 − cos(H_i, X̂_i))^ε",             v:decay(1.0, 0.72), color:"oklch(0.55 0.13 300)" },
-    { k:"L_dec",     f:"‖Z^(t)ᵀZ^(t) − I‖² + ‖Z^(a)ᵀZ^(a) − I‖²  (∈ L_cont)",  v:decay(0.6, 0.40), color:"oklch(0.55 0.13 250)" },
+    {
+      k: "L_cont",
+      nameTex: "\\mathcal{L}_{\\mathrm{cont}}",
+      fTex: "w_{\\mathrm{dec}}\\,\\mathcal{L}_{\\mathrm{dec}} + w_{\\mathrm{cont}}\\,(\\mathcal{L}_{\\mathrm{nod}} + \\mathcal{L}_{\\mathrm{nei}} + \\mathcal{L}_{\\mathrm{clu}})",
+      v: decay(1.2, 0.55),
+      color: "oklch(0.58 0.13 35)",
+    },
+    {
+      k: "L_cluster",
+      nameTex: "\\mathcal{L}_{\\mathrm{cluster}}",
+      fTex: "-\\tfrac{1}{n}\\sum_{i}\\log\\dfrac{\\exp(\\cos(H_i,\\bar{H}_{k})/\\tau)}{\\sum_{j}\\exp(\\cos(H_i,\\bar{H}_{j})/\\tau)}",
+      v: decay(0.8, 0.60),
+      color: "oklch(0.55 0.13 150)",
+    },
+    {
+      k: "L_recons",
+      nameTex: "\\mathcal{L}_{\\mathrm{recons}}",
+      fTex: "\\tfrac{1}{n}\\sum_{i}\\bigl(1-\\cos(H_i,\\hat{X}_i)\\bigr)^{\\varepsilon}",
+      v: decay(1.0, 0.72),
+      color: "oklch(0.55 0.13 300)",
+    },
+    {
+      k: "L_dec",
+      nameTex: "\\mathcal{L}_{\\mathrm{dec}}\\;\\,{\\scriptstyle(\\in\\mathcal{L}_{\\mathrm{cont}})}",
+      fTex: "\\bigl\\|{Z^{(t)}}^{\\!\\top}Z^{(t)}-I\\bigr\\|^{2} + \\bigl\\|{Z^{(a)}}^{\\!\\top}Z^{(a)}-I\\bigr\\|^{2}",
+      v: decay(0.6, 0.40),
+      color: "oklch(0.55 0.13 250)",
+    },
   ];
   return (
     <div style={{
@@ -57,13 +104,13 @@ function LossBreakdown({ active, tick }) {
       </div>
       <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8}}>
         {items.map(it => (
-          <LossBarCard key={it.k} name={it.k} formula={it.f} value={it.v}
+          <LossBarCard key={it.k} nameTex={it.nameTex} formulaTex={it.fTex} value={it.v}
             color={it.color} active={active} pulsing={active}/>
         ))}
       </div>
-      <div style={{marginTop:12, fontSize:11.5, color:"#3d3a35", lineHeight:1.6}}>
-        <b>L = L_cont + L_cluster + L_recons</b>（论文 Eq.17；L_dec 嵌在 L_cont 里以 w_dec 加权）—
-        全部自监督，<b>不需要任何节点标签</b>。L_cont 是分层对比（节点 / 邻居 / 簇三粒度 + 去相关），L_recons 让 H 对齐 X̂（Eq.20）。
+      <div style={{marginTop:12, fontSize:11.5, color:"#3d3a35", lineHeight:1.8}}>
+        <InlineKatex tex="\mathcal{L} = \mathcal{L}_{\mathrm{cont}} + \mathcal{L}_{\mathrm{cluster}} + \mathcal{L}_{\mathrm{recons}}"/>
+        <span style={{marginLeft:8}}>（论文 Eq.17；<InlineKatex tex="\mathcal{L}_{\mathrm{dec}}"/> 嵌在 <InlineKatex tex="\mathcal{L}_{\mathrm{cont}}"/> 里以 <InlineKatex tex="w_{\mathrm{dec}}"/> 加权）— 全部自监督，<b>不需要任何节点标签</b>。<InlineKatex tex="\mathcal{L}_{\mathrm{cont}}"/> 是分层对比（节点 / 邻居 / 簇三粒度 + 去相关），<InlineKatex tex="\mathcal{L}_{\mathrm{recons}}"/> 让 <InlineKatex tex="H"/> 对齐 <InlineKatex tex="\hat{X}"/>（Eq.20）。</span>
       </div>
     </div>
   );
