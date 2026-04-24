@@ -3,7 +3,30 @@
 
 const { useMemo } = React;
 
-function PipeBlock({ x, y, w, h, label, sub, color, active, dim, onClick, hoverable }) {
+// KaTeX-rendered sub-text inside SVG via foreignObject.
+function SubKatex({ x, y, w, h, tex, color }) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!ref.current || !window.katex) return;
+    try {
+      window.katex.render(tex, ref.current, {
+        throwOnError: false, displayMode: false, strict: "ignore",
+      });
+    } catch(e) {
+      if (ref.current) ref.current.textContent = tex;
+    }
+  }, [tex]);
+  return (
+    <foreignObject x={x} y={y} width={w} height={h} style={{pointerEvents:"none", overflow:"visible"}}>
+      <div xmlns="http://www.w3.org/1999/xhtml" ref={ref}
+        style={{width:"100%", height:"100%", display:"flex",
+          alignItems:"center", justifyContent:"center",
+          fontSize:"10.5px", color, lineHeight:1.2, whiteSpace:"nowrap"}}/>
+    </foreignObject>
+  );
+}
+
+function PipeBlock({ x, y, w, h, label, sub, subTex, color, active, dim, onClick, hoverable }) {
   const stroke = active ? color : "#c8c1b4";
   const textFill = active ? color : "#3d3a35";
   const subFill = active ? color : "#827d75";
@@ -12,6 +35,7 @@ function PipeBlock({ x, y, w, h, label, sub, color, active, dim, onClick, hovera
   const [hover, setHover] = React.useState(false);
   const isClickable = !!onClick;
   const rectStroke = hover && isClickable ? color : stroke;
+  const hasSub = !!(sub || subTex);
   return (
     <g
       style={{
@@ -35,16 +59,20 @@ function PipeBlock({ x, y, w, h, label, sub, color, active, dim, onClick, hovera
         {active && <rect x={x} y={y} width={w} height="3" rx="8" fill={color}/>}
       </g>
       <g opacity={textOp} style={{transition:"opacity .35s ease"}}>
-        <text x={x+w/2} y={sub ? y+h/2-3 : y+h/2+4} textAnchor="middle"
+        <text x={x+w/2} y={hasSub ? y+h/2-3 : y+h/2+4} textAnchor="middle"
           style={{fontSize:12.5, fontWeight:600, fill: textFill,
             fontFamily:"'Inter','Noto Serif SC',sans-serif", pointerEvents:"none"}}>
           {label}
         </text>
-        {sub && <text x={x+w/2} y={y+h/2+13} textAnchor="middle"
-          style={{fontSize:10, fill:subFill,
-            fontFamily:"'JetBrains Mono',monospace", pointerEvents:"none"}}>
-          {sub}
-        </text>}
+        {subTex ? (
+          <SubKatex x={x+2} y={y+h/2+2} w={w-4} h={h/2-2} tex={subTex} color={subFill}/>
+        ) : sub && (
+          <text x={x+w/2} y={y+h/2+13} textAnchor="middle"
+            style={{fontSize:10, fill:subFill,
+              fontFamily:"'JetBrains Mono',monospace", pointerEvents:"none"}}>
+            {sub}
+          </text>
+        )}
       </g>
     </g>
   );
@@ -105,67 +133,67 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
     <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%", height:"auto", display:"block"}}>
       {/* source graph G = (V, E, X) — fans out into X (features) and A (adjacency) */}
       <PipeBlock x={X.graph} y={Y.mid-14} w={110} h={54}
-        label="图 G" sub="(V, E, X)" color="#3d3a35"
+        label="图 G" subTex="(V,\,E,\,X)" color="#3d3a35"
         active={on("input-x")||on("input-a")} onClick={()=>go("input")}/>
 
       {/* input column */}
-      <PipeBlock x={X.input} y={Y.attr} w={100} h={54} label="X" sub="N×F" color={A_A}
+      <PipeBlock x={X.input} y={Y.attr} w={100} h={54} label="X" subTex="\mathbb R^{N\times F}" color={A_A}
         active={on("input-x")} onClick={()=>go("input")}/>
-      <PipeBlock x={X.input} y={Y.topo} w={100} h={54} label="A" sub="N×N" color={A_T}
+      <PipeBlock x={X.input} y={Y.topo} w={100} h={54} label="A" subTex="\{0,1\}^{N\times N}" color={A_T}
         active={on("input-a")} onClick={()=>go("input")}/>
 
       {/* encoders — paper has cross-modality init (U from X̄, B from Ã). Sub-labels show the
            actual source so the arrow visual stays clean (no crossings). */}
       <PipeBlock x={X.encode} y={Y.attr} w={150} h={54}
-        label="属性分支初值 H₀ᵃ" sub="B = eig_d(Â)" color={A_A}
+        label="属性分支初值" subTex="B = \mathrm{eig}_d(\hat A)" color={A_A}
         active={on("a-enc")} onClick={()=>go("encode")}/>
       <PipeBlock x={X.encode} y={Y.topo} w={150} h={54}
-        label="拓扑分支初值 H₀ᵗ" sub="U = SVD_d(X̄)" color={A_T}
+        label="拓扑分支初值" subTex="U = \mathrm{SVD}_d(\bar X)" color={A_T}
         active={on("s-enc")} onClick={()=>go("encode")}/>
 
       {/* diffusion blocks */}
       <PipeBlock x={X.diff} y={Y.attr} w={210} h={54}
-        label="属性分支扩散 attr_agg"
-        sub={`α·Ŝ·H + H₀  ×${tweaks.attrLayers}`}
+        label="属性分支扩散"
+        subTex={`H^{a}\\leftarrow\\alpha\\hat S H^{a}+H_0^{a}\\;\\times ${tweaks.attrLayers}`}
         color={A_A} active={on("attr-diff")} onClick={()=>go("attribute")}/>
       <PipeBlock x={X.diff} y={Y.topo} w={210} h={54}
-        label="拓扑分支扩散 top_agg"
-        sub={`α·Â·H + H₀  ×${tweaks.topLayers}`}
+        label="拓扑分支扩散"
+        subTex={`H^{t}\\leftarrow\\alpha\\hat A H^{t}+H_0^{t}\\;\\times ${tweaks.topLayers}`}
         color={A_T} active={on("top-diff")} onClick={()=>go("topology")}/>
 
       {/* linear transforms W^(t), W^(a) — paper Eq.14 */}
       <PipeBlock x={X.xform} y={Y.attr} w={130} h={54}
-        label="线性变换 W^(a)" sub="Z^(a) = H^(a)·W^(a)" color={A_A}
+        label="线性变换" subTex="Z^{(a)}=H^{(a)}W^{(a)}" color={A_A}
         active={on("fusion")} onClick={()=>go("fusion")}/>
       <PipeBlock x={X.xform} y={Y.topo} w={130} h={54}
-        label="线性变换 W^(t)" sub="Z^(t) = H^(t)·W^(t)" color={A_T}
+        label="线性变换" subTex="Z^{(t)}=H^{(t)}W^{(t)}" color={A_T}
         active={on("fusion")} onClick={()=>go("fusion")}/>
 
       {/* fusion */}
       <PipeBlock x={X.fusion} y={Y.mid} w={160} h={54}
-        label="融合 fusion"
-        sub={`β=${tweaks.beta.toFixed(2)}`}
+        label="融合"
+        subTex={`H=\\beta Z^{(t)}+(1-\\beta)Z^{(a)}`}
         color={A_F} active={on("fusion")} onClick={()=>go("fusion")}/>
 
       {/* kmeans */}
       <PipeBlock x={X.fusion} y={Y.mid+80} w={160} h={42}
-        label="k-means → C₀" color={A_C} active={on("kmeans")}
+        label="k-means" subTex="\to C_0" color={A_C} active={on("kmeans")}
         onClick={()=>go("kmeans")}/>
 
       {/* c-prop — paper Eq.16 uses γ (not the branch α) */}
       <PipeBlock x={X.cprop} y={Y.mid} w={200} h={54}
         label="C-prop 簇分配扩散"
-        sub={`γ·Â·C + C₀  ×${tweaks.cpropLayers}`}
+        subTex={`C\\leftarrow\\gamma\\hat A C+C_0\\;\\times ${tweaks.cpropLayers}`}
         color={A_C} active={on("cprop")} onClick={()=>go("cprop")}/>
 
       {/* output */}
       <PipeBlock x={X.cprop} y={Y.mid+80} w={200} h={42}
-        label="argmax(C) → 簇" color={A_C} active={on("output")}
+        label="输出" subTex="\hat y_i=\arg\max_k C_{ik}" color={A_C} active={on("output")}
         onClick={()=>go("output")}/>
 
       {/* loss bar */}
       <PipeBlock x={X.fusion} y={Y.loss} w={440} h={36}
-        label="L = L_cont + L_cluster + L_recons"
+        subTex="\mathcal L=\mathcal L_{\text{cont}}+\mathcal L_{\text{cluster}}+\mathcal L_{\text{recons}}"
         color={A_L} active={on("loss")} dim={!on("loss")}
         onClick={()=>go("loss")}/>
 
