@@ -223,6 +223,18 @@ const GLOSSARY = {
            formula:"\\min_C\\;\\textstyle\\sum_{k=1}^K (1-\\gamma)\\,\\mathcal D(C_{\\cdot k},\\Lambda)+\\gamma\\,\\mathcal D(C_{\\cdot k},\\tilde A)",
            desc:"论文 Eq.8 —— GDC（Graph Diffusion Clustering）的聚类目标：以簇指示矩阵 $C$ 为变量，同时最小化 $C$ 在输入图 $\\tilde A$ 和表示空间的 affinity 图 $\\Lambda=HH^\\top$ 上的 DE。\n$\\gamma\\in[0,1]$ 平衡两者：$\\gamma$ 大偏向原图拓扑，$\\gamma$ 小偏向表示空间 affinity。\n解出来是 Lemma 5 → Eq.16：$C=\\sum_{\\ell=0}^{L_C}\\gamma^\\ell\\tilde A^\\ell C^{(0)}$（C-prop 扩散形式）。\n这里的 $\\gamma$ 就是 C-prop 的衰减系数（和分支扩散的 $\\alpha$ 独立）。",
            role:"paper 理论目标（聚类）" },
+  "Eq5Unify":{ tex:"\\text{Eq.5}", name:"DE 统一框架 · Unified DE",
+           formula:"\\mathrm{trace}(C^\\top(I-\\tilde A)C)=\\textstyle\\sum_{k=1}^K \\mathcal D(C_{\\cdot k},\\tilde A),\\quad \\mathrm{trace}(H^\\top(I-\\tilde A)H)=\\textstyle\\sum_{i=1}^d \\mathcal D(H_{\\cdot i},\\tilde A)",
+           desc:"论文 Eq.5 (Sec. 4.1) 的关键 insight —— 谱聚类 (Eq.3) 和 GNN Laplacian smoothing (Eq.4) 的 trace 目标都可以改写成 DE 之和。\n这意味着：\n  · 谱聚类 = 在图上最小化类指示矩阵 $C$ 的 DE\n  · GNN = 在图上最小化节点表示 $H$ 的 DE\n两者本质一致，只是作用对象不同（$C$ vs $H$）。\nDGAC 把这两件事合成一个统一框架：同时最小化 $H$ 的 DE（→ DGDN / Eq.9）和 $C$ 的 DE（→ GDC / Eq.8）。",
+           role:"paper 理论统一" },
+  "Lemma2HR":{ tex:"\\text{Lemma 2}", name:"同质率 ↔ DE 关系 · HR ↔ DE",
+           formula:"HR_{\\mathcal G}=\\tfrac{1}{2}-\\tfrac{1}{|E|}\\textstyle\\sum_{k=1}^K \\mathcal D(Y_{\\cdot k},A)",
+           desc:"论文 Lemma 2 (Sec. 4.1) —— 图的同质率 $HR$ 等于 $1/2$ 减去真实类指示矩阵 $Y$（NCI 归一化）的 DE 之和（按边数归一）。\n直观：$Y$ 在图上越 smooth（DE 越小）$\\Rightarrow$ 相邻节点越倾向同类 $\\Rightarrow$ HR 越高。\nDGAC 敢声称 graph-agnostic 的理论锚点：\n  · 最小化 DE ≡ 在对应图上提升同质性\n  · 异质图上原图 $HR_{\\mathcal G}$ 低（Texas 0.108）$\\Rightarrow$ 难找到低 DE 的 $H$\n  · 但属性图 $HR_{\\mathcal H}$ 可能很高（Texas 0.422，Table 2）$\\Rightarrow$ 属性侧 smoothing 仍能捕捉簇结构",
+           role:"paper 核心理论连接" },
+  "HR":    { tex:"HR_{\\mathcal G}", name:"同质率 · Homophily Ratio",
+           formula:"HR_{\\mathcal G}=\\tfrac{1}{|E|}\\textstyle\\sum_{(v_i,v_j)\\in E}\\mathbb 1[y_{v_i}=y_{v_j}]",
+           desc:"图的同质率（论文 Sec. 4.1）—— 边两端同类标签的比例，$\\in[0,1]$：\n  · $\\approx 1$：完美同质（Cora $0.810$，Citeseer $0.739$）—— 相邻几乎同类，传统 GNN 友好\n  · $\\approx 0.5$：随机\n  · $\\to 0$：强异质（Texas $0.108$）—— 相邻几乎必异类，传统 GNN 失效\nDGAC 构造：属性图 $\\mathcal H$ 的 HR 往往高于原图 $\\mathcal G$（Table 2：Texas $HR_{\\mathcal G}=0.108 \\to HR_{\\mathcal H}=0.422$）$\\Rightarrow$ 在 $\\tilde S$ 上 smoothing 还有希望。\nLemma 2 把 HR 和 DE 解析联系起来（见 Lemma2HR 卡）。",
+           role:"图的性质" },
   "D":    { tex:"D", name:"度对角矩阵 · Degree matrix",
            formula:"D=\\mathrm{diag}\\bigl(d(v_1),\\dots,d(v_N)\\bigr),\\quad D_{ii}=d(v_i)=\\textstyle\\sum_j A_{ij}",
            desc:"论文 Sec. 3.1 —— 对角矩阵，第 $i$ 个对角元是节点 $v_i$ 的度 $d(v_i)=|\\mathcal N(v_i)|$，非对角元全为 $0$。\n直观：节点连得越密 $\\Rightarrow$ 对角元越大；孤立节点对角元为 $0$（导致 $D^{-1/2}$ 数值问题，GCN 靠自环 $A+I$ 避免）。\n\n四大用途（均为对称归一化的 building block）：\n  · $\\tilde A=D^{-1/2}AD^{-1/2}$：paper 归一化邻接（Sec. 3.1）\n  · $L=D-A$：拉普拉斯；归一化版 $L_{\\text{sym}}=I-\\tilde A$\n  · $\\bar X=\\mathrm{diag}(d)^{-1/2}X$：度归一化特征，$U=\\mathrm{SVD}_d(\\bar X)$ 用（Lemma 3）\n  · $\\mathcal D(x,A)=x^\\top Lx$ 里的 $L$ 间接依赖 $D$\n\n为什么 $D^{-1/2}$（而不是 $D^{-1}$）？\n  · $D^{-1}A$ 是 row-stochastic 的随机游走矩阵，但不对称，谱分析不方便\n  · $D^{-1/2}AD^{-1/2}$ 保持对称，特征值 $\\in[-1,1]$，扩散迭代稳定\n\nplayground vs paper 差异：\n  · 这里 $D$ 跟随 paper 约定（$A$ 的度，无自环）\n  · playground 的 $\\hat A$ 里用的是 $\\tilde D=\\mathrm{diag}(\\sum_j(A+I)_{ij})$（$A+I$ 的度），与这里的 $D$ 差 $+1$\n  · 在大多数非 pathological 图上，两种约定的下游结果几乎一致",
@@ -301,9 +313,12 @@ const RELATED = {
   dv:     ["Nset","A","D"],                     // d(v_i) = |N(v_i)| = Σ_j A_ij
   Atilde: ["A","D","Ahat"],                     // paper version without self-loop
   Lap:    ["D","A","Atilde","DE"],             // L = D - A; used in DE = x^T L x
-  DE:     ["Eq9DGDN","Eq8GDC","Lap","Atilde","Shat","H","C"], // D(x, A) = x^T L x; two key applications as Eq chips
+  DE:     ["Eq9DGDN","Eq8GDC","Eq5Unify","Lemma2HR","Lap","Atilde","Shat","H","C"], // DE is the theoretical core
   Eq9DGDN:["DE","Atilde","Shat","Ht","Ha","H"],
   Eq8GDC: ["DE","Atilde","C","gamma","Lap"],
+  Eq5Unify:["DE","Atilde","Lap","H","C"],
+  Lemma2HR:["HR","DE","Atilde","Shat"],
+  HR:     ["Lemma2HR","DE","Atilde","Shat"],
   I:      [],                                   // I ∈ ℝ^{d×d}
   SVDd:   ["Msvd","Ud","Sigd","Vd"],           // M ≈ U_d Σ_d V_dᵀ; SVD_d(M) = U_d Σ_d^{1/2}
   Ud:     ["N"],                               // U_d ∈ ℝ^{N×d}
