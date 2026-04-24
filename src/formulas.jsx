@@ -714,10 +714,12 @@ function FormulaPanel({ step, tweaks }) {
         </span>
       </div>
 
-      <Block active={id==="input"} color="#3d3a35" eyebrow="输入 · INPUT"
-        onOpen={open} syms={["A","X","N","F"]}>
+      <Block active={id==="input"} color="#3d3a35" eyebrow="输入 · INPUT + 理论基础"
+        onOpen={open} syms={["A","X","N","F","D","Atilde","Lap","DE","Nset","dv"]}>
         <Eq hl={id==="input"}
           tex="\mathcal G=(V,\,E,\,X),\quad A_{ij}=\mathbb 1[(v_i,v_j)\in E],\quad X\in\mathbb R^{N\times F}"/>
+        <Eq hl={id==="input"}
+          tex="D_{ii}=\textstyle\sum_j A_{ij},\quad \tilde A=D^{-1/2}AD^{-1/2},\quad L=D-A,\quad \mathcal D(x,A)=x^\top L\,x"/>
       </Block>
 
       <Block active={id==="encode"} color={A_A} eyebrow="输入编码 · ENCODE（交叉模态）"
