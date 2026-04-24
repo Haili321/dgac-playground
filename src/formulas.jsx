@@ -195,6 +195,22 @@ const GLOSSARY = {
            formula:"\\|x\\|_2=\\sqrt{\\sum_i x_i^{\\,2}}",
            desc:"标准欧氏范数。\nDGAC 用它做特征归一化 $\\hat X_i=X_i/\\|X_i\\|_2$，把每个节点放到单位球面。",
            role:"向量范数" },
+  "Nset": { tex:"\\mathcal N(v_i)", name:"邻居集合 · Neighbor set",
+           formula:"\\mathcal N(v_i)=\\{v_j : (v_i,v_j)\\in E\\}",
+           desc:"**论文 Sec. 3.1** —— 节点 $v_i$ 的邻居集合。\n在 $\\mathcal L_{\\text{nei}}$ 中用来对邻居的属性分支表示做平均：$\\tfrac{1}{d(v_i)}\\sum_{v_j\\in\\mathcal N(v_i)}Z^{(a)}_j$。\n无向图下 $\\mathcal N$ 对称：$v_j\\in\\mathcal N(v_i)\\Leftrightarrow v_i\\in\\mathcal N(v_j)$。",
+           role:"图结构" },
+  "dv":   { tex:"d(v_i)", name:"节点度 · Node degree",
+           formula:"d(v_i)=|\\mathcal N(v_i)|=\\textstyle\\sum_j A_{ij}",
+           desc:"**论文 Sec. 3.1** —— 节点 $v_i$ 的度数（邻居个数）。\n注意区分**矩阵形式的 $D$**：$D=\\mathrm{diag}(d(v_1),\\dots,d(v_N))$。\n在 $\\mathcal L_{\\text{nei}}$ 里 $1/d(v_i)$ 用于归一化邻居聚合。",
+           role:"标量（每节点）" },
+  "Atilde":{ tex:"\\tilde A", name:"paper 的归一化邻接（无自环）",
+           formula:"\\tilde A=D^{-1/2}\\,A\\,D^{-1/2}",
+           desc:"**论文 Sec. 3.1** 定义的对称归一化邻接矩阵（**无自环**，$D$ 是 $A$ 的度矩阵）。\nplayground 为匹配 GCN / PyG 约定改用 $\\hat A=D^{-1/2}(A+I)D^{-1/2}$（有自环），在同质小图上差异很小。\n出现场合：论文 Eq.12 扩散、Laplacian $L=I-\\tilde A$、Eq.16 C-prop。",
+           role:"paper 版归一化邻接" },
+  "Lap":  { tex:"L", name:"拉普拉斯矩阵 · Laplacian",
+           formula:"L=D-A,\\quad \\text{normalized: }L_{\\text{sym}}=I-\\tilde A",
+           desc:"**论文 Sec. 3.1 / Sec. 4.1** —— 用于 Dirichlet Energy 的定义：$\\mathcal D(x,A)=x^\\top L x$。\nDGAC 的理论分析都建立在最小化 DE 之上（Sec. 4.1）。\nplayground 不直接显式使用 $L$，但它是 $\\tilde A$ / $\\hat A$ 扩散动力学的对称对偶。",
+           role:"paper 理论基础" },
   "D":    { tex:"D", name:"度对角矩阵 · Degree matrix",
            formula:"D_{ii}=\\sum_{j}(A+I)_{ij}",
            desc:"对角线上是 $A+I$ 每行之和（GCN 约定：有自环）。\n用于对称归一化 $\\hat A = D^{-1/2}(A+I)D^{-1/2}$。\n**论文 Sec. 3.1 约定**：$D$ 是无自环 $A$ 的度矩阵，即 $D_{ii}=\\sum_j A_{ij}$；配套的 $\\tilde A=D^{-1/2}AD^{-1/2}$。\nplayground 跟随 GCN / PyG 约定（$A+I$），两种约定在小图上差异很小。\n$D$ 也出现在 $\\bar X=\\mathrm{diag}(d)^{-1/2}X$（用于算 $U=\\mathrm{SVD}_d(\\bar X)$）。",
@@ -233,11 +249,11 @@ const GLOSSARY = {
 // (M, u, v, x, σ, W, b, etc.) that aren't modelled as their own entries are skipped.
 const RELATED = {
   X:      ["N","F"],                           // X ∈ ℝ^{N×F}, X_i = attr(v_i)
-  A:      ["N"],                                // A ∈ {0,1}^{N×N}
+  A:      ["N","Atilde","D","Nset"],           // A ∈ {0,1}^{N×N}, derived from E
   N:      [],                                   // N = |V|
   F:      ["X"],                                // F = dim(X_i)
   K:      [],                                   // K = #clusters
-  Ahat:   ["A","D","I"],                       // Â = D^{-1/2}(A+I)D^{-1/2}
+  Ahat:   ["A","D","I","Atilde"],              // Â = D^{-1/2}(A+I)D^{-1/2}; compare to Ã
   Xhat:   ["X","L2"],                          // X̂_i = X_i / ||X_i||_2
   Shat:   ["Xhat","N"],                        // Ŝ = X̂X̂ᵀ ∈ ℝ^{N×N}
   H0t:    ["SVDd","barX"],                     // paper: U = SVD_d(X̄)
@@ -267,8 +283,12 @@ const RELATED = {
   Lcont:  ["Lnod","Lnei","Lclu","Ldec"],       // w_dec L_dec + w_cont (L_nod + L_nei + L_clu)
   Ldec:   ["Zt","Za","I","Frob"],              // ||Z^T Z - I||_F² per branch
   Lnod:   ["Zt","Za","Frob"],                  // ||Z^t - Z^a||_F²
-  Lnei:   ["Zt","Za","N","L2"],                // neighbor-level invariance
+  Lnei:   ["Zt","Za","Nset","dv","L2"],        // neighbor-level invariance; 1/d(v_i) sum over N(v_i)
   Lclu:   ["Zt","Za","C","K","L2"],            // cluster-level invariance
+  Nset:   ["A","dv","Lnei"],                    // N(v_i) derives from E (via A)
+  dv:     ["Nset","A","D"],                     // d(v_i) = |N(v_i)| = Σ_j A_ij
+  Atilde: ["A","D","Ahat"],                     // paper version without self-loop
+  Lap:    ["D","A","Atilde"],                   // L = D - A
   I:      [],                                   // I ∈ ℝ^{d×d}
   SVDd:   ["Msvd","Ud","Sigd","Vd"],           // M ≈ U_d Σ_d V_dᵀ; SVD_d(M) = U_d Σ_d^{1/2}
   Ud:     ["N"],                               // U_d ∈ ℝ^{N×d}
