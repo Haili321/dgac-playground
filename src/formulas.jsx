@@ -209,8 +209,12 @@ const GLOSSARY = {
            role:"paper 版归一化邻接" },
   "Lap":  { tex:"L", name:"拉普拉斯矩阵 · Laplacian",
            formula:"L=D-A,\\quad \\text{normalized: }L_{\\text{sym}}=I-\\tilde A",
-           desc:"论文 Sec. 3.1 / Sec. 4.1 —— 用于 Dirichlet Energy 的定义：$\\mathcal D(x,A)=x^\\top L x$。\nDGAC 的理论分析都建立在最小化 DE 之上（Sec. 4.1）。\nplayground 不直接显式使用 $L$，但它是 $\\tilde A$ / $\\hat A$ 扩散动力学的对称对偶。",
+           desc:"论文 Sec. 3.1 / Sec. 4.1 —— 用于 Dirichlet Energy 的定义：$\\mathcal D(x,A)=x^\\top L x$（见 DE 卡）。\nDGAC 的理论分析都建立在最小化 DE 之上（Sec. 4.1）。\nplayground 不直接显式使用 $L$，但它是 $\\tilde A$ / $\\hat A$ 扩散动力学的对称对偶。",
            role:"paper 理论基础" },
+  "DE":   { tex:"\\mathcal D", name:"狄利克雷能量 · Dirichlet Energy",
+           formula:"\\mathcal D(x,A)=\\tfrac{1}{2}\\sum_{v_i,v_j\\in V}A_{ij}\\,\\bigl\\|\\tfrac{x_i}{\\sqrt{d(v_i)}}-\\tfrac{x_j}{\\sqrt{d(v_j)}}\\bigr\\|_2^2=x^\\top L_{\\text{sym}}\\,x",
+           desc:"论文 Definition 1 (Sec. 4.1) —— 节点信号 $x$ 在图 $A$ 上的光滑度度量。\n$\\mathcal D$ 小 $\\Rightarrow$ 相邻节点信号相近；$\\mathcal D$ 大 $\\Rightarrow$ 相邻差异大。\n是 DGAC 整个理论框架的核心：\n  · $\\mathcal D(H_{\\cdot i},\\hat A)$：拓扑侧 GNN smoothing 目标\n  · $\\mathcal D(H_{\\cdot i},\\tilde S)$：属性侧 smoothing 目标\n  · 同时最小化 $\\Rightarrow$ DGDN 的 Eq.9\n  · $\\mathcal D(C_{\\cdot k},\\hat A)$：GDC 的聚类目标（Eq.8）\nLemma 2 给出 $\\mathcal D$ 和 homophily ratio 的解析联系。",
+           role:"paper 核心目标函数" },
   "D":    { tex:"D", name:"度对角矩阵 · Degree matrix",
            formula:"D_{ii}=\\sum_{j}(A+I)_{ij}",
            desc:"对角线上是 $A+I$ 每行之和（GCN 约定：有自环）。\n用于对称归一化 $\\hat A = D^{-1/2}(A+I)D^{-1/2}$。\n论文 Sec. 3.1 约定：$D$ 是无自环 $A$ 的度矩阵，即 $D_{ii}=\\sum_j A_{ij}$；配套的 $\\tilde A=D^{-1/2}AD^{-1/2}$。\nplayground 跟随 GCN / PyG 约定（$A+I$），两种约定在小图上差异很小。\n$D$ 也出现在 $\\bar X=\\mathrm{diag}(d)^{-1/2}X$（用于算 $U=\\mathrm{SVD}_d(\\bar X)$）。",
@@ -288,7 +292,8 @@ const RELATED = {
   Nset:   ["A","dv","Lnei"],                    // N(v_i) derives from E (via A)
   dv:     ["Nset","A","D"],                     // d(v_i) = |N(v_i)| = Σ_j A_ij
   Atilde: ["A","D","Ahat"],                     // paper version without self-loop
-  Lap:    ["D","A","Atilde"],                   // L = D - A
+  Lap:    ["D","A","Atilde","DE"],             // L = D - A; used in DE = x^T L x
+  DE:     ["Lap","Atilde","Ahat","Shat","H","C"], // D(x, A) = x^T L x; minimized over H and C
   I:      [],                                   // I ∈ ℝ^{d×d}
   SVDd:   ["Msvd","Ud","Sigd","Vd"],           // M ≈ U_d Σ_d V_dᵀ; SVD_d(M) = U_d Σ_d^{1/2}
   Ud:     ["N"],                               // U_d ∈ ℝ^{N×d}
