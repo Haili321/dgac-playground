@@ -692,7 +692,7 @@ function FormulaPanel({ step, tweaks }) {
       <Block active={id==="input"} color="#3d3a35" eyebrow="输入 · INPUT"
         onOpen={open} syms={["A","X","N","F"]}>
         <Eq hl={id==="input"}
-          tex="\mathcal G=(A,\,X),\quad A\in\mathbb R^{N\times N},\quad X\in\mathbb R^{N\times F}"/>
+          tex="\mathcal G=(V,\,E,\,X),\quad A_{ij}=\mathbb 1[(v_i,v_j)\in E],\quad X\in\mathbb R^{N\times F}"/>
       </Block>
 
       <Block active={id==="encode"} color={A_A} eyebrow="输入编码 · ENCODE（交叉模态）"

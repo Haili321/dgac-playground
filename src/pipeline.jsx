@@ -117,7 +117,7 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
       {/* encoders — paper has cross-modality init (U from X̄, B from Ã). Sub-labels show the
            actual source so the arrow visual stays clean (no crossings). */}
       <PipeBlock x={X.encode} y={Y.attr} w={150} h={54}
-        label="属性分支初值 H₀ᵃ" sub="B = eig_d(Ã)" color={A_A}
+        label="属性分支初值 H₀ᵃ" sub="B = eig_d(Â)" color={A_A}
         active={on("a-enc")} onClick={()=>go("encode")}/>
       <PipeBlock x={X.encode} y={Y.topo} w={150} h={54}
         label="拓扑分支初值 H₀ᵗ" sub="U = SVD_d(X̄)" color={A_T}

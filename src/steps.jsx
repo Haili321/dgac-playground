@@ -6,18 +6,18 @@ const STEPS = [
   {
     id: "input",
     title: "输入",
-    subtitle: "节点特征 X 与邻接矩阵 A",
+    subtitle: "带属性图 G = (V, E, X)",
     active: ["input-x", "input-a"],
     formula: "input",
-    desc: "DGAC 处理带属性的图 G=(A, X)。不同于传统 GNN，它不需要标签就能聚类，并在同质 (Cora) 与异质 (Texas / Wisc) 图上都能稳定工作。",
+    desc: "**论文 Sec. 3.1** — DGAC 处理带属性的图 G = (V, E, X)，其中 V 是 n 个节点的集合，E 是 m 条边，X ∈ ℝⁿˣᶠ 是属性矩阵（第 i 行 Xᵢ 是节点 vᵢ 的属性）。邻接矩阵 A 从 E 导出（Aᵢⱼ = 1 当且仅当 (vᵢ, vⱼ) ∈ E）。不同于传统 GNN，DGAC 不需要标签就能聚类，并在同质（Cora）与异质（Texas / Wisconsin）图上都稳定工作。",
   },
   {
     id: "encode",
     title: "输入编码",
-    subtitle: "交叉模态初值：U = SVD_d(X̄)，B = eig_d(Ã)",
+    subtitle: "交叉模态初值：U = SVD_d(X̄)，B = eig_d(Â)",
     active: ["input-x", "input-a", "s-enc", "a-enc"],
     formula: "encode",
-    desc: "DGAC 的交叉模态设计（论文 Eq.12-13 / Lemma 3）：拓扑分支的初值 H₀ᵗ = U 来自**属性侧**（X̄ 的 SVD），属性分支的初值 H₀ᵃ = B 来自**拓扑侧**（Ã 的前 d 个特征向量）。两个初值把对侧的结构信息注入本分支。",
+    desc: "**论文 Eq.12-13 / Lemma 3** — DGAC 的交叉模态设计：拓扑分支的初值 H₀ᵗ = U 来自**属性侧**（X̄ = diag(d)⁻¹ᐟ²·X 的 SVD），属性分支的初值 H₀ᵃ = B 来自**拓扑侧**（Â 的前 d 个特征向量）。两个初值把对侧的结构信息注入本分支，再各自扩散。",
   },
   {
     id: "topology",
@@ -25,7 +25,7 @@ const STEPS = [
     subtitle: "Hᵗ ← α · Â · Hᵗ + H₀ᵗ  (迭代 L 次)",
     active: ["s-enc", "top-diff"],
     formula: "topology",
-    desc: "拓扑分支沿归一化邻接矩阵 Â 做 L 步 APPNP 风格扩散：每一步都把当前表示在邻居上做加权平均，再加一个与初值 H₀ 的残差项，得到 Hᵗ。",
+    desc: "**论文 Eq.12** — 拓扑分支沿归一化邻接 Â 做 L 步 APPNP 风格扩散：每一步把当前表示在邻居上做加权平均，再加一个与初值 H₀ᵗ = U 的残差项。展开得闭式 Hᵗ = Σ αℓ Âℓ U。",
   },
   {
     id: "attribute",
@@ -33,7 +33,7 @@ const STEPS = [
     subtitle: "Hᵃ ← α · Ŝ · Hᵃ + H₀ᵃ  (迭代 L 次)",
     active: ["a-enc", "attr-diff"],
     formula: "attribute",
-    desc: "属性分支沿 属性相似图 Ŝ 做相同形式的扩散。Ŝ = X̂ X̂ᵀ 把特征接近的节点视作“邻居”，哪怕它们在原图里没有连边 —— 这就是对异质图友好的关键。",
+    desc: "**论文 Eq.13** — 属性分支沿属性相似图 Ŝ 做同形式的扩散，初值是来自拓扑侧的 B。Ŝ = X̂·X̂ᵀ 把特征接近的节点视作「虚拟邻居」，哪怕它们在原图 A 中无边 —— 这是对异质图友好的关键。",
   },
   {
     id: "fusion",
@@ -46,10 +46,10 @@ const STEPS = [
   {
     id: "kmeans",
     title: "K-means 初分配",
-    subtitle: "在 H 上做 k-means 得 C₀",
+    subtitle: "在 H 上做余弦 k-means 得 C₀",
     active: ["fusion", "kmeans"],
     formula: "kmeans",
-    desc: "对融合表示 H 做一次余弦 k-means，得到硬分配矩阵 C₀ ∈ {0,1}ᴺˣᴷ。这是一次“粗糙”的分配，可能有不少节点被分错。",
+    desc: "**论文 Sec. 5.2** — 对融合表示 H 做一次余弦 k-means，得到硬分配矩阵 C₀ ∈ {0,1}ᴺˣᴷ。这是一次「粗糙」的分配，可能有不少节点被分错 —— 下一步的 C-prop 会用邻居投票纠错。",
   },
   {
     id: "cprop",
