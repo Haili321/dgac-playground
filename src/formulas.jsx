@@ -216,8 +216,8 @@ const GLOSSARY = {
            desc:"论文 Definition 1 (Sec. 4.1) —— 节点信号 $x\\in\\mathbb R^n$ 在图 $A$ 上的光滑度度量。\n$\\mathcal D$ 小 $\\Rightarrow$ 相邻节点信号相近；$\\mathcal D$ 大 $\\Rightarrow$ 相邻差异大。\n多维信号 $X\\in\\mathbb R^{n\\times d}$ 时按列累加：$\\mathcal D(X, A)=\\mathrm{trace}(X^\\top L X)$。\n是 DGAC 整个理论框架的核心：\n  · $\\mathcal D(H_{\\cdot i},\\tilde A)$：拓扑侧 smoothing 目标（Eq.9）\n  · $\\mathcal D(H_{\\cdot i},\\tilde S)$：属性侧 smoothing 目标\n  · $\\mathcal D(C_{\\cdot k},\\tilde A)$：GDC 聚类目标（Eq.8）\nLemma 2 给出 $\\mathcal D$ 和 homophily ratio 的解析联系。",
            role:"paper 核心目标函数" },
   "D":    { tex:"D", name:"度对角矩阵 · Degree matrix",
-           formula:"D_{ii}=\\sum_{j} A_{ij}=d(v_i),\\quad D\\in\\mathbb R^{N\\times N}",
-           desc:"论文 Sec. 3.1 —— 对角线上是 $A$ 每行之和（即每节点的度）：$D_{ii}=|\\mathcal N(v_i)|$。\n用途：\n  · 对称归一化邻接 $\\tilde A=D^{-1/2}\\,A\\,D^{-1/2}$（论文约定，无自环）\n  · 拉普拉斯 $L=D-A$，归一化 $L_{\\text{sym}}=I-\\tilde A$\n  · 度归一化特征 $\\bar X=\\mathrm{diag}(d)^{-1/2}\\,X$（用于 $U=\\mathrm{SVD}_d(\\bar X)$）\nplayground 的 $\\hat A$ 用 GCN 约定加了自环（$D^{-1/2}(A+I)D^{-1/2}$），此时隐含的 $D$ 是 $A+I$ 的度矩阵（和这里的 $D$ 差一个 $+1$）。",
+           formula:"D=\\mathrm{diag}\\bigl(d(v_1),\\dots,d(v_N)\\bigr),\\quad D_{ii}=d(v_i)=\\textstyle\\sum_j A_{ij}",
+           desc:"论文 Sec. 3.1 —— 对角矩阵，第 $i$ 个对角元是节点 $v_i$ 的度 $d(v_i)=|\\mathcal N(v_i)|$，非对角元全为 $0$。\n直观：节点连得越密 $\\Rightarrow$ 对角元越大；孤立节点对角元为 $0$（导致 $D^{-1/2}$ 数值问题，GCN 靠自环 $A+I$ 避免）。\n\n四大用途（均为对称归一化的 building block）：\n  · $\\tilde A=D^{-1/2}AD^{-1/2}$：paper 归一化邻接（Sec. 3.1）\n  · $L=D-A$：拉普拉斯；归一化版 $L_{\\text{sym}}=I-\\tilde A$\n  · $\\bar X=\\mathrm{diag}(d)^{-1/2}X$：度归一化特征，$U=\\mathrm{SVD}_d(\\bar X)$ 用（Lemma 3）\n  · $\\mathcal D(x,A)=x^\\top Lx$ 里的 $L$ 间接依赖 $D$\n\n为什么 $D^{-1/2}$（而不是 $D^{-1}$）？\n  · $D^{-1}A$ 是 row-stochastic 的随机游走矩阵，但不对称，谱分析不方便\n  · $D^{-1/2}AD^{-1/2}$ 保持对称，特征值 $\\in[-1,1]$，扩散迭代稳定\n\nplayground vs paper 差异：\n  · 这里 $D$ 跟随 paper 约定（$A$ 的度，无自环）\n  · playground 的 $\\hat A$ 里用的是 $\\tilde D=\\mathrm{diag}(\\sum_j(A+I)_{ij})$（$A+I$ 的度），与这里的 $D$ 差 $+1$\n  · 在大多数非 pathological 图上，两种约定的下游结果几乎一致",
            role:"预处理" },
   "softmax":{ tex:"\\mathrm{softmax}", name:"Softmax",
            formula:"\\mathrm{softmax}(z)_k=\\frac{\\exp z_k}{\\sum_j\\exp z_j}",
@@ -308,7 +308,7 @@ const RELATED = {
   MSE:    ["N","L2"],                          // (1/N) Σ ||X_i - Y_i||_2²  (X,Y generic)
   Frob:   [],                                  // ||M||_F (M generic)
   L2:     [],                                  // ||x||_2 (x generic)
-  D:      ["A","I"],                           // D_ii = Σ_j (A+I)_{ij}
+  D:      ["dv","A","Atilde","Lap","barX","Ahat"], // D_ii = d(v_i); used in Ã, L, X̄, Â
   softmax:[],                                  // softmax(z)_k (z generic)
   SigmaK: ["L","alpha","Ahat"],                // H^{(L)} = Σ α^ℓ Â^ℓ H_0
 };
