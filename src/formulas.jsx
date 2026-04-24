@@ -31,13 +31,17 @@ const GLOSSARY = {
            formula:"\\hat X_i = X_i\\,/\\,\\|X_i\\|_2",
            desc:"逐行除以 L2 范数，把每个特征向量放到单位球面。\n这一步让 $\\hat X\\hat X^\\top$ 直接等于余弦相似度，不必再写除法。\n论文把 $\\hat X$ 当作 $X$ 直接给出（Sec. 3.1 约定 $\\|X_i\\|_2=1$），$\\mathcal L_{\\text{recons}}$ 里的 $\\hat X$ 实际是更严格的 $PQ$（$\\bar X=PQR^\\top$ 的 SVD 前两项）。",
            role:"预处理" },
+  "barX": { tex:"\\bar X", name:"度归一化特征矩阵 · Degree-normalized X",
+           formula:"\\bar X=\\mathrm{diag}(d)^{-1/2}\\,X,\\quad d_i=\\textstyle\\sum_j S_{ij}",
+           desc:"**论文 Lemma 3** —— $\\bar X$ 是对 $X$ 每行做度归一化后的结果；$d_i=\\sum_j S_{ij}$ 是属性相似图 $\\hat S$ 下节点 $v_i$ 的度。\n关键作用：$\\tilde S = \\bar X\\bar X^\\top$（S 的 symmetric normalization），因此 $\\tilde S$ 的前 $d$ 个特征向量 $U$ 可以通过 $\\bar X$ 的 $\\mathrm{SVD}_d$ 高效得到（$O(nf d)$ 复杂度），不用显式构造 $\\tilde S$（$O(n^2)$ 存储）。\n$U=\\mathrm{SVD}_d(\\bar X)$ 用作拓扑分支初值 $H_0^{\\,t}$（见 $H_0^{\\,t}$ 卡）。\n$\\bar X=PQR^\\top$ 的 SVD 也给出 $\\hat X=PQ$，用在 $\\mathcal L_{\\text{recons}}$。",
+           role:"预处理（SVD 加速用）" },
   "Shat": { tex:"\\hat S", name:"属性相似矩阵 · Attribute affinity",
            formula:"\\hat S=\\hat X\\hat X^\\top\\;\\in\\;\\mathbb R^{N\\times N},\\quad \\hat S_{ij}=\\cos(X_i,X_j)",
-           desc:"**论文 Eq.6** —— $\\hat S_{ij}=X_i X_j^\\top$（当 $\\|X_i\\|_2=1$ 时正是余弦相似度）。\n把「属性相似」也当作一种邻接，构成第二张图（affinity graph $\\mathcal H$）。\n代码里用 $\\bar X$ 的 SVD 规避 $O(N^2)$ 显式存储。\n这是 DGAC 在异质图上好用的根本原因：属性邻居可能比结构邻居更干净。",
+           desc:"**论文 Eq.6** —— $S_{ij}=X_i X_j^\\top$（当 $\\|X_i\\|_2=1$ 时正是余弦相似度）。\n把「属性相似」也当作一种邻接，构成第二张图（paper 称作 affinity graph $\\mathcal H$）。\n**注意**：paper 另有 $\\tilde S=\\mathrm{diag}(\\sum_j S_{\\cdot j})^{-1/2}\\,S\\,\\mathrm{diag}(\\sum_j S_{\\cdot j})^{-1/2}$（进一步对称归一化）。playground 的 $\\hat S$ 实际只做到 $S$ 这一级简化。\n代码里用 $\\bar X$ 的 SVD 规避 $O(N^2)$ 显式存储。\nDGAC 在异质图上好用的根本原因：属性邻居可能比结构邻居更干净。",
            role:"扩散算子（属性）" },
 
   "H0t":  { tex:"H_0^{\\,t}\\equiv U", name:"拓扑分支初值 U · Topology init",
-           formula:"U=\\mathrm{SVD}_d(\\bar X),\\quad \\bar X=\\mathrm{diag}(d)^{-1/2}X",
+           formula:"U=\\mathrm{SVD}_d(\\bar X)",
            desc:"**论文 Eq.12 / Lemma 3** — 拓扑分支的初值 $U$ 来自**属性侧** $\\bar X$ 的 SVD 前 $d$ 个左奇异向量，等价于 $\\tilde S=\\bar X\\bar X^\\top$ 的前 $d$ 个特征向量（SVD 版本避免 $O(n^2)$ 显式构造 $\\tilde S$）。\n这是 DGAC 的**交叉模态**设计之一：拓扑分支用属性侧的结构做初始化，再在 $\\hat A$ 上扩散，让两侧信息融合。\nplayground 的 toy 实现用类中心+噪声近似 $U$。",
            role:"初值（拓扑，来自属性 X̄）" },
   "H0a":  { tex:"H_0^{\\,a}\\equiv B", name:"属性分支初值 B · Attribute init",
@@ -236,7 +240,9 @@ const RELATED = {
   Ahat:   ["A","D","I"],                       // Â = D^{-1/2}(A+I)D^{-1/2}
   Xhat:   ["X","L2"],                          // X̂_i = X_i / ||X_i||_2
   Shat:   ["Xhat","N"],                        // Ŝ = X̂X̂ᵀ ∈ ℝ^{N×N}
-  H0t:    ["SVDd","X","D"],                    // paper: U = SVD_d(X̄), X̄ = diag(d)^{-1/2} X
+  H0t:    ["SVDd","barX"],                     // paper: U = SVD_d(X̄)
+  barX:   ["X","D","SVDd","Shat"],             // X̄ = diag(d)^{-1/2} X, used in SVD of X̄
+  Msvd:   ["barX","Ahat","N","F"],             // M in SVD_d(M) is X̄ (for U) or uses Ahat (for B)
   H0a:    ["Ahat","A","D"],                    // paper: B = top-d eigvec(Ã), Ã = D^{-1/2} A D^{-1/2}
   Ht:     ["L","alpha","Ahat","H0t","SigmaK"], // Hᵗ = Σ α^ℓ Â^ℓ H₀ᵗ
   Ha:     ["L","alpha","Shat","H0a","SigmaK"], // Hᵃ = Σ α^ℓ Ŝ^ℓ H₀ᵃ
@@ -265,7 +271,6 @@ const RELATED = {
   Lclu:   ["Zt","Za","C","K","L2"],            // cluster-level invariance
   I:      [],                                   // I ∈ ℝ^{d×d}
   SVDd:   ["Msvd","Ud","Sigd","Vd"],           // M ≈ U_d Σ_d V_dᵀ; SVD_d(M) = U_d Σ_d^{1/2}
-  Msvd:   ["N","F"],                           // M ∈ ℝ^{N×N} or ℝ^{N×F}
   Ud:     ["N"],                               // U_d ∈ ℝ^{N×d}
   Sigd:   [],                                  // Σ_d = diag(σ_1,…,σ_d)
   Vd:     ["N"],                               // V_d ∈ ℝ^{N×d}
