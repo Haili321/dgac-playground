@@ -31,6 +31,10 @@ const GLOSSARY = {
            formula:"\\hat X_i = X_i\\,/\\,\\|X_i\\|_2",
            desc:"逐行除以 L2 范数，把每个特征向量放到单位球面。\n这一步让 $\\hat X\\hat X^\\top$ 直接等于余弦相似度，不必再写除法。\n论文把 $\\hat X$ 当作 $X$ 直接给出（Sec. 3.1 约定 $\\|X_i\\|_2=1$），$\\mathcal L_{\\text{recons}}$ 里的 $\\hat X$ 实际是更严格的 $PQ$（$\\bar X=PQR^\\top$ 的 SVD 前两项）。",
            role:"预处理" },
+  "dS":   { tex:"d", name:"属性图度向量 · Attribute-affinity degrees",
+           formula:"d_i=\\textstyle\\sum_j S_{ij}=X_i\\!\\cdot\\!\\bigl(\\textstyle\\sum_j X_j\\bigr)^{\\!\\top},\\quad d\\in\\mathbb R^N",
+           desc:"论文 Lemma 3 —— 节点 $v_i$ 在属性相似图 $\\hat S$ 上的「度」：$S$ 矩阵的第 $i$ 行之和，也等于 $X_i$ 与所有节点特征之和的点积。\n用途：$\\bar X=\\mathrm{diag}(d)^{-1/2}X$ 的归一化因子（见 $\\bar X$ 卡），进而算 $U=\\mathrm{SVD}_d(\\bar X)$。\n注意区分：\n  · 这里的 $d$ 是属性相似图 $\\hat S$ 上的度（向量，N 维）\n  · $d(v_i)$ 是原图 $A$ 上节点 $v_i$ 的邻居数（见 d(v_i) 卡）\n两个是不同的量，只是符号都用小写 $d$ 而已。",
+           role:"属性图度向量" },
   "barX": { tex:"\\bar X", name:"度归一化特征矩阵 · Degree-normalized X",
            formula:"\\bar X=\\mathrm{diag}(d)^{-1/2}\\,X,\\quad d_i=\\textstyle\\sum_j S_{ij}",
            desc:"论文 Lemma 3 —— $\\bar X$ 是对 $X$ 每行做度归一化后的结果；$d_i=\\sum_j S_{ij}$ 是属性相似图 $\\hat S$ 下节点 $v_i$ 的度。\n关键作用：$\\tilde S = \\bar X\\bar X^\\top$（S 的 symmetric normalization），因此 $\\tilde S$ 的前 $d$ 个特征向量 $U$ 可以通过 $\\bar X$ 的 $\\mathrm{SVD}_d$ 高效得到（$O(nf d)$ 复杂度），不用显式构造 $\\tilde S$（$O(n^2)$ 存储）。\n$U=\\mathrm{SVD}_d(\\bar X)$ 用作拓扑分支初值 $H_0^{\\,t}$（见 $H_0^{\\,t}$ 卡）。\n$\\bar X=PQR^\\top$ 的 SVD 也给出 $\\hat X=PQ$，用在 $\\mathcal L_{\\text{recons}}$。",
@@ -281,7 +285,8 @@ const RELATED = {
   Xhat:   ["X","L2"],                          // X̂_i = X_i / ||X_i||_2
   Shat:   ["Xhat","N"],                        // Ŝ = X̂X̂ᵀ ∈ ℝ^{N×N}
   H0t:    ["SVDd","barX"],                     // paper: U = SVD_d(X̄)
-  barX:   ["X","D","SVDd","Shat"],             // X̄ = diag(d)^{-1/2} X, used in SVD of X̄
+  barX:   ["X","dS","SVDd","Shat"],            // X̄ = diag(d)^{-1/2} X, d from S-graph
+  dS:     ["Shat","X","barX","dv"],            // d_i = Σ_j S_ij (attribute affinity graph degree)
   Msvd:   ["barX","Ahat","N","F"],             // M in SVD_d(M) is X̄ (for U) or uses Ahat (for B)
   H0a:    ["Ahat","A","D"],                    // paper: B = top-d eigvec(Ã), Ã = D^{-1/2} A D^{-1/2}
   Ht:     ["L","alpha","Ahat","H0t","SigmaK"], // Hᵗ = Σ α^ℓ Â^ℓ H₀ᵗ
@@ -748,7 +753,7 @@ function FormulaPanel({ step, tweaks }) {
       </Block>
 
       <Block active={id==="encode"} color={A_A} eyebrow="输入编码 · ENCODE（交叉模态）"
-        onOpen={open} syms={["Xhat","X","L2","Shat","Ahat","D","H0t","H0a","SVDd"]}>
+        onOpen={open} syms={["Xhat","X","L2","Shat","Ahat","barX","dS","H0t","H0a","SVDd"]}>
         <Eq hl={id==="encode"} tex="\hat X=X\,/\,\|X\|_2,\qquad \hat S=\hat X\hat X^\top,\qquad \bar X=\mathrm{diag}(d)^{-1/2}X"/>
         <Eq hl={id==="encode"}
           tex="H_0^{\,t}=U=\mathrm{SVD}_d(\bar X),\qquad H_0^{\,a}=B=\text{top-}d\,\text{eigvec}(\hat A)"/>
