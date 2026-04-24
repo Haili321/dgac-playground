@@ -172,17 +172,6 @@ function PipelineDiagram({ activeSet, tweaks, onStepJump }) {
       {/* arrows — G → (X, A) */}
       <Arrow from={[X.graph+110, Y.mid+0]}  to={[X.input, Y.attr+27]} active={on("input-x")} color={A_A} curve={-10}/>
       <Arrow from={[X.graph+110, Y.mid+26]} to={[X.input, Y.topo+27]} active={on("input-a")} color={A_T} curve={10}/>
-      {/* formula labels on the G→X/A arrows — placed above/below block rows to avoid overlap */}
-      <text x={(X.graph+110+X.input)/2} y={Y.attr - 8} textAnchor="middle"
-        style={{fontSize:10, fill:"#827d75", fontStyle:"italic",
-          fontFamily:"'JetBrains Mono',monospace", pointerEvents:"none"}}>
-        X: 节点特征
-      </text>
-      <text x={(X.graph+110+X.input)/2} y={Y.topo - 8} textAnchor="middle"
-        style={{fontSize:10, fill:"#827d75", fontStyle:"italic",
-          fontFamily:"'JetBrains Mono',monospace", pointerEvents:"none"}}>
-        A_ij = 𝟙[(i,j) ∈ E]
-      </text>
 
       {/* arrows — input → encode (same-row; cross-modality indicated by encoder sub-labels) */}
       <Arrow from={[X.input+100, Y.attr+27]} to={[X.encode, Y.attr+27]}  active={on("a-enc")||on("input-x")} color={A_A}/>
